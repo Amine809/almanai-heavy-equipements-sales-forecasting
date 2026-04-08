@@ -1,0 +1,1472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Al Manai Heavy Equipment — Sales Intelligence Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@300;400;500;700;900&family=Barlow:wght@300;400;500;600&display=swap');
+
+  :root {
+    --bg: #080a0f;
+    --surface: #0e1118;
+    --surface2: #141820;
+    --surface3: #1a1f2a;
+    --border: #1e2535;
+    --border2: #252d3d;
+    --accent: #f5a623;
+    --accent2: #e8542a;
+    --accent3: #2ec4b6;
+    --accent4: #7c6fff;
+    --text: #e2e8f0;
+    --text2: #94a3b8;
+    --muted: #4b5a70;
+    --yellow: #fbbf24;
+    --red: #f43f5e;
+    --green: #22d3a5;
+    --blue: #38bdf8;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: 'Barlow', sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; overflow-x: hidden; }
+
+  .header {
+    background: linear-gradient(90deg, #0a0c12 0%, #140a00 40%, #0a0f1a 100%);
+    border-bottom: 2px solid var(--accent); padding: 0 36px;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 70px; position: sticky; top: 0; z-index: 200;
+    box-shadow: 0 2px 40px rgba(245,166,35,0.12);
+  }
+  .logo-group { display: flex; align-items: center; gap: 14px; }
+  .logo-hex {
+    width: 46px; height: 46px; background: linear-gradient(135deg, var(--accent), var(--accent2));
+    clip-path: polygon(50% 0%, 95% 25%, 95% 75%, 50% 100%, 5% 75%, 5% 25%);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif; font-weight: 900; font-size: 17px; color: #000;
+  }
+  .logo-text { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 20px; letter-spacing: 0.06em; text-transform: uppercase; line-height: 1.15; }
+  .logo-text span { display: block; font-size: 10px; font-weight: 400; letter-spacing: 0.25em; color: var(--accent); }
+  .header-center { display:flex; align-items:center; gap:6px; font-family:'Barlow Condensed',sans-serif; font-size:11px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); }
+  .header-right { display: flex; align-items: center; gap: 20px; }
+  .pulse-dot { width: 7px; height: 7px; background: var(--green); border-radius: 50%; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1;box-shadow:0 0 0 0 rgba(34,211,165,0.4)} 50%{opacity:0.7;box-shadow:0 0 0 6px rgba(34,211,165,0)} }
+  .live-tag { font-family:'Barlow Condensed',sans-serif; font-size:11px; font-weight:700; letter-spacing:0.15em; text-transform:uppercase; color:var(--green); display:flex; align-items:center; gap:7px; }
+  .upload-btn { background:var(--accent); color:#000; border:none; padding:9px 22px; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px; letter-spacing:0.12em; text-transform:uppercase; cursor:pointer; clip-path:polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%); transition:all 0.2s; }
+  .upload-btn:hover { background:#fff; }
+
+  .filters-bar { background:var(--surface); border-bottom:1px solid var(--border); padding:10px 36px; display:flex; gap:14px; align-items:center; flex-wrap:wrap; }
+  .filter-label { font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:700; letter-spacing:0.2em; text-transform:uppercase; color:var(--muted); }
+  select { background:var(--surface2); border:1px solid var(--border2); color:var(--text); padding:7px 28px 7px 12px; font-family:'Barlow',sans-serif; font-size:12px; cursor:pointer; outline:none; appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='%234b5a70'%3E%3Cpath d='M0 0l5 6 5-6z'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; transition:border-color 0.2s; }
+  select:hover, select:focus { border-color:var(--accent); }
+  .filter-divider { width:1px; height:22px; background:var(--border2); }
+  .record-count { margin-left:auto; font-family:'Barlow Condensed',sans-serif; font-size:13px; color:var(--text2); }
+  .record-count strong { color:var(--accent); font-size:17px; }
+
+  .main { padding:28px 36px; display:flex; flex-direction:column; gap:28px; }
+
+  .kpi-row { display:grid; grid-template-columns:repeat(5,1fr); gap:16px; }
+  .kpi-card { background:var(--surface); border:1px solid var(--border); padding:22px 20px 18px; position:relative; overflow:hidden; transition:all 0.25s; cursor:default; }
+  .kpi-card::before { content:''; position:absolute; top:0; left:0; width:3px; height:100%; }
+  .kpi-card:hover { border-color:var(--accent); transform:translateY(-3px); box-shadow:0 8px 30px rgba(0,0,0,0.4); }
+  .kpi-card.c1::before { background:linear-gradient(180deg,var(--accent),#c97e00); }
+  .kpi-card.c2::before { background:linear-gradient(180deg,var(--accent2),#a03018); }
+  .kpi-card.c3::before { background:linear-gradient(180deg,var(--accent3),#1a8a83); }
+  .kpi-card.c4::before { background:linear-gradient(180deg,var(--yellow),#c09000); }
+  .kpi-card.c5::before { background:linear-gradient(180deg,var(--accent4),#4a38c0); }
+  .kpi-icon { font-size:22px; margin-bottom:10px; }
+  .kpi-value { font-family:'Barlow Condensed',sans-serif; font-size:28px; font-weight:900; line-height:1; margin-bottom:4px; }
+  .kpi-label { font-size:10px; font-weight:600; letter-spacing:0.18em; text-transform:uppercase; color:var(--text2); }
+  .kpi-meta { margin-top:10px; padding-top:10px; border-top:1px solid var(--border); display:flex; justify-content:space-between; }
+  .kpi-meta-item { text-align:center; }
+  .kpi-meta-val { font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:700; }
+  .kpi-meta-lbl { font-size:9px; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); }
+
+  .card { background:var(--surface); border:1px solid var(--border); padding:24px; }
+  .card-hd { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:20px; }
+  .card-title { font-family:'Barlow Condensed',sans-serif; font-size:15px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
+  .card-sub { font-size:11px; color:var(--text2); margin-top:3px; }
+  .badge { font-family:'Barlow Condensed',sans-serif; font-size:9px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; padding:4px 10px; border:1px solid; }
+  .badge-accent { color:var(--accent); border-color:rgba(245,166,35,0.35); background:rgba(245,166,35,0.07); }
+  .badge-teal   { color:var(--accent3); border-color:rgba(46,196,182,0.35); background:rgba(46,196,182,0.07); }
+  .badge-blue   { color:var(--blue); border-color:rgba(56,189,248,0.35); background:rgba(56,189,248,0.07); }
+  .badge-purple { color:var(--accent4); border-color:rgba(124,111,255,0.35); background:rgba(124,111,255,0.07); }
+
+  .g2  { display:grid; grid-template-columns:1fr 1fr; gap:28px; }
+  .g3  { display:grid; grid-template-columns:1fr 1fr 1fr; gap:28px; }
+  .g31 { display:grid; grid-template-columns:2fr 1fr; gap:28px; }
+
+  /* DONUT PANEL */
+  .donut-panel { display:flex; gap:20px; align-items:flex-start; }
+  .donut-wrap { position:relative; flex-shrink:0; }
+  .donut-center { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); text-align:center; pointer-events:none; width:90%; }
+  .donut-center-val { font-family:'Barlow Condensed',sans-serif; font-weight:900; line-height:1; }
+  .donut-center-lbl { font-size:9px; font-weight:600; letter-spacing:0.15em; text-transform:uppercase; color:var(--text2); margin-top:3px; }
+  .legend-table { flex:1; min-width:0; }
+  .legend-hd { display:grid; grid-template-columns:10px 1fr 44px 78px; gap:8px; padding:0 0 6px; border-bottom:1px solid var(--border2); margin-bottom:4px; }
+  .legend-hd span { font-size:9px; font-weight:700; letter-spacing:0.12em; text-transform:uppercase; color:var(--muted); }
+  .legend-hd span:nth-child(3), .legend-hd span:nth-child(4) { text-align:right; }
+  .legend-row { display:grid; grid-template-columns:10px 1fr 44px 78px; align-items:center; gap:8px; padding:5px 0; border-bottom:1px solid var(--border); font-size:12px; }
+  .legend-row:last-child { border-bottom:none; }
+  .legend-dot { width:10px; height:10px; border-radius:2px; flex-shrink:0; }
+  .legend-name { color:var(--text); font-weight:500; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:11px; }
+  .legend-pct { font-family:'Barlow Condensed',sans-serif; font-size:13px; font-weight:700; text-align:right; }
+  .legend-val { font-size:10px; color:var(--text2); text-align:right; white-space:nowrap; }
+
+  /* BRAND BARS */
+  .brand-list { display:flex; flex-direction:column; gap:7px; }
+  .brand-row { display:flex; align-items:center; gap:10px; }
+  .brand-rank { font-family:'Barlow Condensed',sans-serif; font-size:12px; font-weight:700; color:var(--muted); width:16px; text-align:center; flex-shrink:0; }
+  .brand-name { font-family:'Barlow Condensed',sans-serif; font-size:12px; font-weight:700; text-transform:uppercase; letter-spacing:0.04em; width:130px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .brand-bar-wrap { flex:1; height:20px; background:var(--surface3); position:relative; overflow:hidden; }
+  .brand-bar-fill { height:100%; background:linear-gradient(90deg,var(--accent),var(--accent2)); transition:width 0.8s cubic-bezier(0.4,0,0.2,1); }
+  .brand-bar-pct { position:absolute; right:6px; top:50%; transform:translateY(-50%); font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:700; color:rgba(255,255,255,0.85); }
+  .brand-value { font-family:'Barlow Condensed',sans-serif; font-size:12px; font-weight:700; color:var(--accent); width:75px; text-align:right; flex-shrink:0; }
+
+  table { width:100%; border-collapse:collapse; font-size:12px; }
+  thead tr { background:var(--surface2); border-bottom:2px solid var(--accent); }
+  thead th { font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:700; letter-spacing:0.15em; text-transform:uppercase; color:var(--text2); padding:11px 14px; text-align:left; white-space:nowrap; }
+  tbody tr { border-bottom:1px solid var(--border); transition:background 0.1s; }
+  tbody tr:hover { background:rgba(245,166,35,0.04); }
+  tbody td { padding:11px 14px; }
+
+  .pill { display:inline-block; padding:2px 9px; font-size:9px; font-weight:700; letter-spacing:0.06em; text-transform:uppercase; border-radius:2px; }
+  .pill-construction { background:rgba(245,166,35,0.15); color:var(--accent); }
+  .pill-crane   { background:rgba(232,84,42,0.15); color:var(--accent2); }
+  .pill-truck   { background:rgba(46,196,182,0.15); color:var(--accent3); }
+  .pill-forklift{ background:rgba(56,189,248,0.15); color:var(--blue); }
+  .pill-sweeper { background:rgba(34,211,165,0.15); color:var(--green); }
+  .pill-agri    { background:rgba(124,111,255,0.15); color:var(--accent4); }
+  .pill-other   { background:rgba(75,90,112,0.15); color:var(--text2); }
+  .inv-fast   { background:rgba(34,211,165,0.15); color:var(--green); }
+  .inv-medium { background:rgba(245,166,35,0.15); color:var(--accent); }
+  .inv-slow   { background:rgba(244,63,94,0.15); color:var(--red); }
+
+  .pagination { display:flex; gap:6px; justify-content:flex-end; margin-top:14px; }
+  .page-btn { background:var(--surface2); border:1px solid var(--border); color:var(--text2); padding:5px 11px; font-family:'Barlow Condensed',sans-serif; font-size:12px; font-weight:700; cursor:pointer; letter-spacing:0.05em; text-transform:uppercase; transition:all 0.15s; }
+  .page-btn:hover, .page-btn.active { background:var(--accent); border-color:var(--accent); color:#000; }
+
+  .upload-screen { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:calc(100vh - 70px); padding:48px; text-align:center; }
+  .upload-screen .big-icon { font-size:72px; margin-bottom:24px; }
+  .upload-screen h1 { font-family:'Barlow Condensed',sans-serif; font-size:42px; font-weight:900; text-transform:uppercase; letter-spacing:0.1em; background:linear-gradient(135deg,var(--accent),var(--accent2)); -webkit-background-clip:text; -webkit-text-fill-color:transparent; margin-bottom:14px; }
+  .upload-screen p { color:var(--text2); max-width:460px; line-height:1.7; margin-bottom:36px; font-size:14px; }
+  .drop-zone { border:2px dashed var(--border2); padding:40px 70px; cursor:pointer; transition:all 0.3s; position:relative; }
+  .drop-zone:hover, .drop-zone.drag-over { border-color:var(--accent); background:rgba(245,166,35,0.04); }
+  .drop-zone input { position:absolute; inset:0; opacity:0; cursor:pointer; width:100%; height:100%; }
+  .drop-txt { font-family:'Barlow Condensed',sans-serif; font-size:15px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--text2); }
+  .drop-txt span { color:var(--accent); }
+
+  .loading-screen { display:flex; align-items:center; justify-content:center; min-height:calc(100vh - 70px); flex-direction:column; gap:20px; }
+  .spinner { width:44px; height:44px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+
+  .section-label { font-family:'Barlow Condensed',sans-serif; font-size:11px; font-weight:700; letter-spacing:0.25em; text-transform:uppercase; color:var(--muted); display:flex; align-items:center; gap:12px; }
+  .section-label::after { content:''; flex:1; height:1px; background:var(--border); }
+
+
+  /* ═══════════════════════════════════════════════
+     AI NBA ENGINE STYLES
+  ═══════════════════════════════════════════════ */
+  .nba-section { display:flex; flex-direction:column; gap:20px; }
+
+  /* API key bar */
+  .api-key-bar {
+    background:var(--surface2); border:1px solid var(--border2);
+    padding:14px 20px; display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+  }
+  .api-key-bar label { font-family:'Barlow Condensed',sans-serif; font-size:11px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:var(--text2); flex-shrink:0; }
+  .api-key-input {
+    flex:1; min-width:260px; background:var(--surface3); border:1px solid var(--border2); color:var(--text);
+    padding:8px 14px; font-family:'Barlow',sans-serif; font-size:12px; outline:none;
+    transition:border-color 0.2s;
+  }
+  .api-key-input:focus { border-color:var(--accent); }
+  .api-save-btn {
+    background:var(--accent); color:#000; border:none; padding:9px 20px;
+    font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:12px;
+    letter-spacing:0.1em; text-transform:uppercase; cursor:pointer;
+    clip-path:polygon(8px 0%,100% 0%,calc(100% - 8px) 100%,0% 100%); transition:all 0.2s;
+  }
+  .api-save-btn:hover { background:#fff; }
+  .api-status { font-size:11px; color:var(--green); font-weight:600; }
+
+  /* Company selector row */
+  .nba-controls {
+    display:grid; grid-template-columns:1fr 1fr auto; gap:14px; align-items:end;
+  }
+  .nba-ctrl-group { display:flex; flex-direction:column; gap:6px; }
+  .nba-ctrl-group label { font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:700; letter-spacing:0.18em; text-transform:uppercase; color:var(--muted); }
+  .nba-select {
+    background:var(--surface2); border:1px solid var(--border2); color:var(--text);
+    padding:10px 32px 10px 14px; font-family:'Barlow',sans-serif; font-size:13px;
+    cursor:pointer; outline:none; appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6' fill='%234b5a70'%3E%3Cpath d='M0 0l5 6 5-6z'/%3E%3C/svg%3E");
+    background-repeat:no-repeat; background-position:right 10px center; transition:border-color 0.2s;
+  }
+  .nba-select:focus, .nba-select:hover { border-color:var(--accent); }
+  .nba-run-btn {
+    background:linear-gradient(135deg,var(--accent),var(--accent2)); color:#000; border:none;
+    padding:11px 28px; font-family:'Barlow Condensed',sans-serif; font-weight:700; font-size:13px;
+    letter-spacing:0.1em; text-transform:uppercase; cursor:pointer;
+    clip-path:polygon(10px 0%,100% 0%,calc(100% - 10px) 100%,0% 100%);
+    transition:all 0.25s; white-space:nowrap;
+  }
+  .nba-run-btn:hover { filter:brightness(1.15); transform:translateY(-1px); }
+  .nba-run-btn:disabled { opacity:0.4; cursor:not-allowed; transform:none; }
+
+  /* Preset use-case pills */
+  .usecase-pills { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+  .usecase-pill-lbl { font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:700; letter-spacing:0.15em; text-transform:uppercase; color:var(--muted); margin-right:4px; }
+  .usecase-pill {
+    font-family:'Barlow Condensed',sans-serif; font-size:11px; font-weight:700; letter-spacing:0.06em;
+    text-transform:uppercase; padding:5px 14px; border:1px solid var(--border2);
+    background:var(--surface2); color:var(--text2); cursor:pointer; transition:all 0.2s;
+  }
+  .usecase-pill:hover, .usecase-pill.active { border-color:var(--accent); color:var(--accent); background:rgba(245,166,35,0.08); }
+
+  /* Output area */
+  .nba-output-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  .nba-output-grid.full { grid-template-columns:1fr; }
+
+  .nba-card {
+    background:var(--surface); border:1px solid var(--border); padding:0; overflow:hidden;
+    animation:fadeSlideIn 0.4s ease;
+  }
+  @keyframes fadeSlideIn { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+
+  .nba-card-header {
+    padding:14px 18px; border-bottom:1px solid var(--border);
+    display:flex; align-items:center; gap:10px;
+  }
+  .nba-card-icon { font-size:18px; }
+  .nba-card-title { font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:700; letter-spacing:0.08em; text-transform:uppercase; }
+  .nba-card-body { padding:18px; }
+
+  /* Action items */
+  .action-list { display:flex; flex-direction:column; gap:10px; }
+  .action-item {
+    display:flex; gap:12px; padding:12px 14px;
+    background:var(--surface2); border-left:3px solid var(--border2);
+    transition:border-color 0.2s;
+  }
+  .action-item:hover { border-left-color:var(--accent); }
+  .action-item.priority-critical { border-left-color:var(--red); }
+  .action-item.priority-high     { border-left-color:var(--accent); }
+  .action-item.priority-medium   { border-left-color:var(--accent3); }
+  .action-item.priority-low      { border-left-color:var(--muted); }
+
+  .action-badge {
+    font-family:'Barlow Condensed',sans-serif; font-size:9px; font-weight:700;
+    letter-spacing:0.1em; text-transform:uppercase; padding:2px 8px; border-radius:1px;
+    flex-shrink:0; align-self:flex-start; margin-top:2px;
+  }
+  .badge-critical { background:rgba(244,63,94,0.15); color:var(--red); }
+  .badge-high     { background:rgba(245,166,35,0.15); color:var(--accent); }
+  .badge-medium   { background:rgba(46,196,182,0.15); color:var(--accent3); }
+  .badge-low      { background:rgba(75,90,112,0.2);   color:var(--text2); }
+
+  .action-content {}
+  .action-title { font-weight:600; font-size:13px; margin-bottom:4px; }
+  .action-desc  { font-size:12px; color:var(--text2); line-height:1.5; }
+  .action-products { display:flex; gap:6px; flex-wrap:wrap; margin-top:7px; }
+  .product-tag {
+    font-family:'Barlow Condensed',sans-serif; font-size:10px; font-weight:700;
+    letter-spacing:0.06em; text-transform:uppercase; padding:2px 9px;
+    background:rgba(245,166,35,0.1); color:var(--accent); border:1px solid rgba(245,166,35,0.25);
+  }
+
+  /* News & context cards */
+  .news-list { display:flex; flex-direction:column; gap:10px; }
+  .news-item { padding:12px 14px; background:var(--surface2); border-left:3px solid var(--accent3); }
+  .news-source { font-family:'Barlow Condensed',sans-serif; font-size:9px; font-weight:700; letter-spacing:0.15em; text-transform:uppercase; color:var(--accent3); margin-bottom:4px; }
+  .news-headline { font-size:13px; font-weight:600; margin-bottom:4px; line-height:1.4; }
+  .news-impact   { font-size:11px; color:var(--text2); line-height:1.45; }
+
+  /* Revenue opportunity */
+  .opp-list { display:flex; flex-direction:column; gap:10px; }
+  .opp-item { display:grid; grid-template-columns:1fr auto; gap:10px; align-items:start; padding:12px 14px; background:var(--surface2); }
+  .opp-title { font-size:13px; font-weight:600; margin-bottom:3px; }
+  .opp-desc  { font-size:12px; color:var(--text2); line-height:1.45; }
+  .opp-value { font-family:'Barlow Condensed',sans-serif; font-size:20px; font-weight:900; color:var(--green); text-align:right; white-space:nowrap; }
+  .opp-value span { display:block; font-size:9px; font-weight:600; letter-spacing:0.1em; text-transform:uppercase; color:var(--muted); }
+
+  /* Loyalty score widget */
+  .loyalty-widget { display:flex; flex-direction:column; gap:12px; }
+  .loyalty-meter { display:flex; align-items:center; gap:12px; }
+  .loyalty-name { font-size:12px; font-weight:600; width:180px; flex-shrink:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .loyalty-bar-wrap { flex:1; height:16px; background:var(--surface3); position:relative; }
+  .loyalty-bar-fill { height:100%; transition:width 0.8s ease; }
+  .loyalty-pct { font-family:'Barlow Condensed',sans-serif; font-size:12px; font-weight:700; width:36px; text-align:right; flex-shrink:0; }
+
+  /* Loading skeleton */
+  .nba-loading {
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    padding:48px 24px; gap:16px;
+  }
+  .nba-spinner {
+    width:36px; height:36px; border:3px solid var(--border2);
+    border-top-color:var(--accent); border-radius:50%; animation:spin 0.7s linear infinite;
+  }
+  .nba-loading-txt { font-family:'Barlow Condensed',sans-serif; font-size:13px; letter-spacing:0.15em; text-transform:uppercase; color:var(--text2); }
+  .nba-loading-sub { font-size:11px; color:var(--muted); text-align:center; max-width:320px; line-height:1.6; }
+
+  /* Empty/error state */
+  .nba-empty { text-align:center; padding:48px 24px; color:var(--muted); }
+  .nba-empty-icon { font-size:40px; margin-bottom:12px; opacity:0.4; }
+  .nba-empty-txt { font-family:'Barlow Condensed',sans-serif; font-size:14px; font-weight:700; letter-spacing:0.1em; text-transform:uppercase; margin-bottom:6px; }
+  .nba-empty-sub { font-size:12px; line-height:1.6; max-width:320px; margin:0 auto; }
+
+  /* Score ring */
+  .score-rings { display:grid; grid-template-columns:repeat(3,1fr); gap:16px; text-align:center; margin-bottom:16px; }
+  .score-ring { display:flex; flex-direction:column; align-items:center; gap:6px; padding:14px; background:var(--surface2); }
+  .score-ring-val { font-family:'Barlow Condensed',sans-serif; font-size:32px; font-weight:900; line-height:1; }
+  .score-ring-lbl { font-size:10px; letter-spacing:0.12em; text-transform:uppercase; color:var(--text2); }
+  ::-webkit-scrollbar { width:5px; height:5px; }
+  ::-webkit-scrollbar-track { background:var(--bg); }
+  ::-webkit-scrollbar-thumb { background:var(--border2); border-radius:3px; }
+</style>
+</head>
+<body>
+
+<header class="header">
+  <div class="logo-group">
+    <img src="data:image/png;base64,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" style="height:48px;object-fit:contain;filter:brightness(1.1)" alt="Mannai Trading">
+  </div>
+  <div class="header-center" id="headerStats" style="display:none">
+    <span id="hYear">—</span> &nbsp;·&nbsp; <span id="hBrands">—</span> Brands &nbsp;·&nbsp; <span id="hClients">—</span> Clients
+  </div>
+  <div class="header-right">
+    
+    <div class="live-tag"><div class="pulse-dot"></div>Auto-Sync</div>
+  </div>
+</header>
+
+<div id="app">
+  <div class="loading-screen">
+    <div class="spinner"></div>
+    <div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;letter-spacing:.15em;text-transform:uppercase;color:var(--text2)">Loading dataset…</div>
+    <div style="font-size:12px;color:var(--muted);margin-top:6px">Connecting to data source</div>
+  </div>
+</div>
+
+<script>
+let allData = [], filteredData = [];
+let charts = {};
+let currentPage = 1;
+const PAGE_SIZE = 15;
+const PALETTE = ['#f5a623','#e8542a','#2ec4b6','#38bdf8','#22d3a5','#7c6fff','#f43f5e','#fbbf24','#a78bfa','#34d399','#fb923c','#60a5fa'];
+
+const DRIVE_FILE_ID = '1Jm62MaurlgAo7w93ZDCLa2dXNbPlzFQr';
+
+// Two Google Drive download URL formats — usercontent bypasses the virus-scan HTML page
+const GD_URLS = [
+  `https://drive.usercontent.google.com/download?id=${DRIVE_FILE_ID}&export=download&confirm=t`,
+  `https://drive.google.com/uc?export=download&confirm=t&id=${DRIVE_FILE_ID}`
+];
+
+// CORS proxy services — tried in order, each with a 12-second timeout
+const PROXIES = [
+  u => `https://corsproxy.io/?${encodeURIComponent(u)}`,
+  u => `https://api.allorigins.win/raw?url=${encodeURIComponent(u)}`,
+  u => `https://thingproxy.freeboard.io/fetch/${u}`,
+  u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`
+];
+
+function setLoadStatus(msg) {
+  const el = document.querySelector('#app .loading-screen div:last-child');
+  if (el) el.textContent = msg;
+}
+
+function looksLikeCSV(text) {
+  const t = text.trim();
+  // Reject HTML pages (Google Drive warning page or error page)
+  if (t.startsWith('<') || t.toLowerCase().includes('<!doctype')) return false;
+  // Must have at least one comma and a newline — basic CSV sanity check
+  return t.includes(',') && t.includes('\n') && t.length > 100;
+}
+
+async function fetchWithTimeout(url, timeoutMs = 12000) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const resp = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(timer);
+    return resp;
+  } catch (e) {
+    clearTimeout(timer);
+    throw e;
+  }
+}
+
+async function loadFromDrive() {
+  let attempt = 0;
+  const total = GD_URLS.length * PROXIES.length;
+  for (const gdUrl of GD_URLS) {
+    for (const proxy of PROXIES) {
+      attempt++;
+      const proxyUrl = proxy(gdUrl);
+      setLoadStatus(`Trying source ${attempt} of ${total}…`);
+      try {
+        const resp = await fetchWithTimeout(proxyUrl, 12000);
+        if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+        const text = await resp.text();
+        if (!looksLikeCSV(text)) throw new Error('Received non-CSV content');
+        setLoadStatus('Parsing dataset…');
+        Papa.parse(text, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+          complete: r => { allData = r.data; filteredData = [...allData]; renderDashboard(); }
+        });
+        return; // success
+      } catch (e) {
+        // try next proxy
+      }
+    }
+  }
+  // All proxies exhausted — show fallback upload
+  document.getElementById('app').innerHTML = `
+    <div class="upload-screen">
+      <div class="big-icon">⚠️</div>
+      <h1>Could Not Load<br>Data Source</h1>
+      <p style="color:var(--text2);font-size:13px;margin-bottom:8px">All ${total} network sources timed out or failed.<br>Please download the CSV from Google Drive and load it below.</p>
+      <p style="margin-bottom:24px"><a href="https://drive.google.com/file/d/${DRIVE_FILE_ID}/view" target="_blank" style="color:var(--accent);font-weight:600">Open file in Google Drive ↗</a></p>
+      <label class="drop-zone" id="dropZone">
+        <input type="file" accept=".csv" id="csvFileInput" onchange="handleFileManual(event)">
+        <div class="drop-txt">Drop CSV here or <span>click to browse</span></div>
+      </label>
+    </div>`;
+}
+
+function handleFileManual(e) {
+  if (!e.target.files[0]) return;
+  const file = e.target.files[0];
+  document.getElementById('app').innerHTML = '<div class="loading-screen"><div class="spinner"></div><div style="font-family:Barlow Condensed,sans-serif;font-size:14px;letter-spacing:.15em;text-transform:uppercase;color:var(--text2)">Processing…</div></div>';
+  Papa.parse(file, { header: true, dynamicTyping: true, skipEmptyLines: true, complete: r => { allData = r.data; filteredData = [...allData]; renderDashboard(); } });
+}
+
+const u=v=>v==null?'':String(v);
+function sum(arr,k){return arr.reduce((a,b)=>a+(parseFloat(b[k])||0),0);}
+function groupSum(arr,k,vk){const m={};arr.forEach(d=>{const key=u(d[k])||'Unknown';m[key]=(m[key]||0)+(parseFloat(d[vk])||0);});return m;}
+function fmt(n){if(n>=1e9)return(n/1e9).toFixed(2)+'B';if(n>=1e6)return(n/1e6).toFixed(1)+'M';if(n>=1e3)return(n/1e3).toFixed(0)+'K';return(n||0).toFixed(0);}
+function fmtQ(n){return'QAR '+fmt(n);}
+function pct(v,total){return total?((v/total)*100).toFixed(1)+'%':'0%';}
+function getUnique(k){return[...new Set(allData.map(d=>d[k]).filter(Boolean))].sort();}
+function destroyChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+
+function applyFilters(){
+  const cat=document.getElementById('fCat')?.value||'';
+  const brand=document.getElementById('fBrand')?.value||'';
+  const yr=document.getElementById('fYear')?.value||'';
+  const ct=document.getElementById('fCT')?.value||'';
+  const ch=document.getElementById('fChan')?.value||'';
+  filteredData=allData.filter(d=>(!cat||d.category===cat)&&(!brand||d.brand===brand)&&(!yr||String(d.sale_year)===yr)&&(!ct||d.customer_type===ct)&&(!ch||d.sale_channel===ch));
+  currentPage=1;
+  updateAll();
+}
+
+function renderDashboard(){
+  const cats=getUnique('category'),brands=getUnique('brand'),years=getUnique('sale_year'),ctypes=getUnique('customer_type'),chans=getUnique('sale_channel');
+  const totalBrands=new Set(allData.map(d=>d.brand)).size;
+  const totalClients=new Set(allData.map(d=>d.company_name)).size;
+  document.getElementById('headerStats').style.display='flex';
+  document.getElementById('hYear').textContent=years[0]+'–'+years[years.length-1];
+  document.getElementById('hBrands').textContent=totalBrands;
+  document.getElementById('hClients').textContent=totalClients;
+  document.getElementById('app').innerHTML=`
+    <div class="filters-bar">
+      <span class="filter-label">Filter By</span>
+      <select id="fCat" onchange="applyFilters()"><option value="">All Categories</option>${cats.map(c=>`<option value="${c}">${c}</option>`).join('')}</select>
+      <select id="fBrand" onchange="applyFilters()"><option value="">All Brands</option>${brands.map(b=>`<option value="${b}">${b}</option>`).join('')}</select>
+      <select id="fYear" onchange="applyFilters()"><option value="">All Years</option>${years.map(y=>`<option value="${y}">${y}</option>`).join('')}</select>
+      <select id="fCT" onchange="applyFilters()"><option value="">All Segments</option>${ctypes.map(c=>`<option value="${c}">${c}</option>`).join('')}</select>
+      <select id="fChan" onchange="applyFilters()"><option value="">All Channels</option>${chans.map(c=>`<option value="${c}">${c}</option>`).join('')}</select>
+      <div class="filter-divider"></div>
+      <div class="record-count" id="recordCount">Loading…</div>
+    </div>
+    <div class="main">
+      <div class="kpi-row">
+        <div class="kpi-card c1"><div class="kpi-icon">💰</div><div class="kpi-value" id="kRev">—</div><div class="kpi-label">Total Revenue (QAR)</div><div class="kpi-meta"><div class="kpi-meta-item"><div class="kpi-meta-val" id="kRevTx">—</div><div class="kpi-meta-lbl">Transactions</div></div><div class="kpi-meta-item"><div class="kpi-meta-val" id="kRevAvg">—</div><div class="kpi-meta-lbl">Avg Deal</div></div></div></div>
+        <div class="kpi-card c2"><div class="kpi-icon">📦</div><div class="kpi-value" id="kUnits">—</div><div class="kpi-label">Units Sold</div><div class="kpi-meta"><div class="kpi-meta-item"><div class="kpi-meta-val" id="kUnitsBrands">—</div><div class="kpi-meta-lbl">Brands</div></div><div class="kpi-meta-item"><div class="kpi-meta-val" id="kUnitsCats">—</div><div class="kpi-meta-lbl">Categories</div></div></div></div>
+        <div class="kpi-card c3"><div class="kpi-icon">🏢</div><div class="kpi-value" id="kClients">—</div><div class="kpi-label">Qatar Companies</div><div class="kpi-meta"><div class="kpi-meta-item"><div class="kpi-meta-val" id="kClientsGov">—</div><div class="kpi-meta-lbl">Govt</div></div><div class="kpi-meta-item"><div class="kpi-meta-val" id="kClientsPriv">—</div><div class="kpi-meta-lbl">Private</div></div></div></div>
+        <div class="kpi-card c4"><div class="kpi-icon">🔧</div><div class="kpi-value" id="kService">—</div><div class="kpi-label">Service Revenue</div><div class="kpi-meta"><div class="kpi-meta-item"><div class="kpi-meta-val" id="kParts">—</div><div class="kpi-meta-lbl">Parts Rev</div></div><div class="kpi-meta-item"><div class="kpi-meta-val" id="kCLV">—</div><div class="kpi-meta-lbl">Avg CLV</div></div></div></div>
+        <div class="kpi-card c5"><div class="kpi-icon">📊</div><div class="kpi-value" id="kWarranty">—</div><div class="kpi-label">Under Warranty</div><div class="kpi-meta"><div class="kpi-meta-item"><div class="kpi-meta-val" id="kDiscount">—</div><div class="kpi-meta-lbl">Avg Disc %</div></div><div class="kpi-meta-item"><div class="kpi-meta-val" id="kChurn">—</div><div class="kpi-meta-lbl">Churn Risk</div></div></div></div>
+      </div>
+      <div class="section-label">Revenue Analytics</div>
+      <div class="g31">
+        <div class="card"><div class="card-hd"><div><div class="card-title">Monthly Revenue Trend</div><div class="card-sub">Total QAR revenue by month with 3-month moving average</div></div><span class="badge badge-accent">Time Series</span></div><div style="position:relative;height:230px"><canvas id="chartMonthly"></canvas></div></div>
+        <div class="card"><div class="card-hd"><div><div class="card-title">By Category</div><div class="card-sub">Revenue share with values</div></div><span class="badge badge-teal">Split</span></div><div id="catDonutPanel"></div></div>
+      </div>
+      <div class="section-label">Brand &amp; Customer Intelligence</div>
+      <div class="g2">
+        <div class="card"><div class="card-hd"><div><div class="card-title">Brand Revenue Ranking</div><div class="card-sub">Total QAR per brand</div></div><span class="badge badge-accent">Brands</span></div><div id="brandBars" class="brand-list"></div></div>
+        <div class="card"><div class="card-hd"><div><div class="card-title">Top 10 Qatar Companies</div><div class="card-sub">Highest revenue clients</div></div><span class="badge badge-blue">Clients</span></div><div style="position:relative;height:300px"><canvas id="chartTopCust"></canvas></div></div>
+      </div>
+      <div class="section-label">Segment &amp; Channel Analysis</div>
+      <div class="g3">
+        <div class="card"><div class="card-hd"><div><div class="card-title">Payment Methods</div><div class="card-sub">Revenue by payment type</div></div><span class="badge badge-accent">Finance</span></div><div id="payDonutPanel"></div></div>
+        <div class="card"><div class="card-hd"><div><div class="card-title">Customer Segments</div><div class="card-sub">Revenue by customer type</div></div><span class="badge badge-purple">Segments</span></div><div id="custDonutPanel"></div></div>
+        <div class="card"><div class="card-hd"><div><div class="card-title">Sales Channels</div><div class="card-sub">Revenue by channel</div></div><span class="badge badge-teal">Channels</span></div><div id="chanDonutPanel"></div></div>
+      </div>
+      <div class="section-label">Operations &amp; Logistics</div>
+      <div class="g3">
+        <div class="card"><div class="card-hd"><div><div class="card-title">Revenue by Region</div><div class="card-sub">Qatar delivery regions</div></div><span class="badge badge-teal">Geography</span></div><div style="position:relative;height:280px"><canvas id="chartRegion"></canvas></div></div>
+        <div class="card"><div class="card-hd"><div><div class="card-title">Inventory Movement</div><div class="card-sub">Stock velocity split</div></div><span class="badge badge-accent">Inventory</span></div><div id="invDonutPanel"></div></div>
+        <div class="card"><div class="card-hd"><div><div class="card-title">Project Sectors</div><div class="card-sub">Revenue by sector</div></div><span class="badge badge-blue">Sectors</span></div><div style="position:relative;height:280px"><canvas id="chartProject"></canvas></div></div>
+      </div>
+      <div class="section-label">Equipment Analytics</div>
+      <div class="g3">
+        <div class="card"><div class="card-hd"><div><div class="card-title">Annual Revenue YoY</div><div class="card-sub">Year-over-year</div></div><span class="badge badge-accent">YoY</span></div><div style="position:relative;height:220px"><canvas id="chartYoY"></canvas></div></div>
+        <div class="card"><div class="card-hd"><div><div class="card-title">Engine Type Split</div><div class="card-sub">Fleet composition</div></div><span class="badge badge-blue">Fleet</span></div><div id="engineDonutPanel"></div></div>
+        <div class="card"><div class="card-hd"><div><div class="card-title">Warranty Coverage</div><div class="card-sub">Active vs expired</div></div><span class="badge badge-purple">Warranty</span></div><div id="warrantyDonutPanel"></div></div>
+      </div>
+      <div class="section-label">Transaction Records</div>
+      <div class="card">
+        <div class="card-hd"><div><div class="card-title">Sales Transactions</div><div class="card-sub">Full filtered records</div></div><span class="badge badge-accent">Data Table</span></div>
+        <table><thead><tr><th>Customer ID</th><th>Company</th><th>Brand</th><th>Category</th><th>Model</th><th>Qty</th><th>Unit Price</th><th>Total Sale QAR</th><th>Channel</th><th>Region</th><th>Date</th><th>Inventory</th></tr></thead><tbody id="tableBody"></tbody></table>
+        <div class="pagination" id="pagination"></div>
+      </div>
+      <div class="section-label">AI Sales Intelligence · Next Best Action</div>
+      <div class="card" id="nbaSection">
+        <div class="card-hd">
+          <div><div class="card-title">🤖 AI Account Intelligence</div><div class="card-sub">OpenAI GPT-4o · Gulf market context · Next Best Action per client</div></div>
+          <span class="badge badge-accent">GPT-4o</span>
+        </div>
+        <div class="api-key-bar" style="display:none"></div>
+        <div class="nba-controls" style="margin-bottom:14px">
+          <div class="nba-ctrl-group"><label>Select Company</label><select id="nbaCompany" class="nba-select"><option value="">— choose a client —</option></select></div>
+          <div class="nba-ctrl-group"><label>Use Case Focus</label>
+            <select id="nbaUseCase" class="nba-select">
+              <option value="full">Full Account Intelligence</option>
+              <option value="nba">Next Best Action Only</option>
+              <option value="upsell">Upsell &amp; Cross-sell</option>
+              <option value="loyalty">Loyalty &amp; Retention</option>
+              <option value="news">Gulf News &amp; Project Triggers</option>
+              <option value="churn">Churn Risk Assessment</option>
+              <option value="tender">Upcoming Tender Strategy</option>
+            </select>
+          </div>
+          <button class="nba-run-btn" id="nbaRunBtn" onclick="runNBA()">⚡ Run AI Analysis</button>
+        </div>
+        <div class="usecase-pills" style="margin-bottom:20px">
+          <span class="usecase-pill-lbl">Quick Presets:</span>
+          <button class="usecase-pill" onclick="quickRun('Ashghal','full')">Ashghal</button>
+          <button class="usecase-pill" onclick="quickRun('Qatar Rail','full')">Qatar Rail</button>
+          <button class="usecase-pill" onclick="quickRun('Kahramaa','upsell')">Kahramaa</button>
+          <button class="usecase-pill" onclick="quickRun('QDVC','tender')">QDVC</button>
+          <button class="usecase-pill" onclick="quickRun('Milaha','loyalty')">Milaha</button>
+          <button class="usecase-pill" onclick="quickRun('Qatar Petroleum','upsell')">Qatar Petroleum</button>
+          <button class="usecase-pill" onclick="quickRun('HBK Contracting','nba')">HBK Contracting</button>
+          <button class="usecase-pill" onclick="quickRun('Woqod','churn')">Woqod</button>
+        </div>
+        <div id="nbaOutput">
+          <div class="nba-empty">
+            <div class="nba-empty-icon">🧠</div>
+            <div class="nba-empty-txt">AI Ready</div>
+            <div class="nba-empty-sub">Enter your OpenAI key, pick a company &amp; focus, then click Run — or tap a Quick Preset above.</div>
+          </div>
+        </div>
+      </div>
+    </div>`;
+  updateAll();
+}
+
+
+function updateKPIs(){
+  const rev=sum(filteredData,'final_sale_price_qar');
+  const units=sum(filteredData,'quantity');
+  const tx=filteredData.length;
+  const clients=new Set(filteredData.map(d=>d.company_name)).size;
+  const brands=new Set(filteredData.map(d=>d.brand)).size;
+  const cats=new Set(filteredData.map(d=>d.category)).size;
+  const govCount=filteredData.filter(d=>d.customer_type==='Government'||d.customer_type==='Semi-Government').length;
+  const privCount=filteredData.filter(d=>d.customer_type==='Private Contractor').length;
+  const serviceRev=sum(filteredData,'service_revenue_to_date_qar');
+  const partsRev=sum(filteredData,'parts_revenue_to_date_qar');
+  const avgCLV=tx?sum(filteredData,'total_customer_lifetime_value_qar')/tx:0;
+  const warrantyCount=filteredData.filter(d=>d.warranty_status==='Under Warranty').length;
+  const warrantyPct=tx?((warrantyCount/tx)*100).toFixed(0)+'%':'0%';
+  const avgDiscount=tx?(sum(filteredData,'discount_percentage')/tx).toFixed(1):0;
+  const avgChurn=tx?(sum(filteredData,'churn_risk_score')/tx).toFixed(2):0;
+  document.getElementById('kRev').textContent=fmtQ(rev);
+  document.getElementById('kRevTx').textContent=tx.toLocaleString();
+  document.getElementById('kRevAvg').textContent=fmtQ(tx?rev/tx:0);
+  document.getElementById('kUnits').textContent=Math.round(units).toLocaleString();
+  document.getElementById('kUnitsBrands').textContent=brands;
+  document.getElementById('kUnitsCats').textContent=cats;
+  document.getElementById('kClients').textContent=clients.toLocaleString();
+  document.getElementById('kClientsGov').textContent=govCount.toLocaleString();
+  document.getElementById('kClientsPriv').textContent=privCount.toLocaleString();
+  document.getElementById('kService').textContent=fmtQ(serviceRev);
+  document.getElementById('kParts').textContent=fmtQ(partsRev);
+  document.getElementById('kCLV').textContent=fmtQ(avgCLV);
+  document.getElementById('kWarranty').textContent=warrantyPct;
+  document.getElementById('kDiscount').textContent=avgDiscount+'%';
+  document.getElementById('kChurn').textContent=avgChurn;
+  document.getElementById('recordCount').innerHTML=`<strong>${tx.toLocaleString()}</strong> / ${allData.length.toLocaleString()} records`;
+}
+
+function buildDonutPanel(containerId, labelKey, valueKey, palette, centerLabel, size=130){
+  const rev=groupSum(filteredData,labelKey,valueKey);
+  const entries=Object.entries(rev).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const total=entries.reduce((a,[,v])=>a+v,0);
+  const canvasId='c_'+containerId;
+  const container=document.getElementById(containerId);
+  if(!container)return;
+  container.innerHTML=`
+    <div class="donut-panel">
+      <div class="donut-wrap" style="width:${size}px;height:${size}px;flex-shrink:0">
+        <canvas id="${canvasId}" width="${size}" height="${size}"></canvas>
+        <div class="donut-center">
+          <div class="donut-center-val" style="font-size:${size<135?14:18}px">${fmtQ(total)}</div>
+          <div class="donut-center-lbl">${centerLabel}</div>
+        </div>
+      </div>
+      <div class="legend-table">
+        <div class="legend-hd"><span></span><span>Name</span><span style="text-align:right">Share</span><span style="text-align:right">Amount</span></div>
+        ${entries.map(([name,val],i)=>`
+          <div class="legend-row">
+            <div class="legend-dot" style="background:${palette[i%palette.length]}"></div>
+            <div class="legend-name" title="${name}">${name}</div>
+            <div class="legend-pct" style="color:${palette[i%palette.length]}">${pct(val,total)}</div>
+            <div class="legend-val">${fmtQ(val)}</div>
+          </div>`).join('')}
+      </div>
+    </div>`;
+  destroyChart(canvasId);
+
+  // Custom plugin: draw % number only on each slice midpoint
+  const sliceLabelPlugin = {
+    id: 'sliceLabels_'+canvasId,
+    afterDatasetsDraw(chart) {
+      const { ctx, data } = chart;
+      const meta = chart.getDatasetMeta(0);
+      const total = data.datasets[0].data.reduce((a,b)=>a+b,0);
+      meta.data.forEach((arc, i) => {
+        const val = data.datasets[0].data[i];
+        const percentage = (val / total * 100);
+        if (percentage < 5) return; // skip tiny slices — no room
+        const midAngle = arc.startAngle + (arc.endAngle - arc.startAngle) / 2;
+        const labelRadius = arc.innerRadius + (arc.outerRadius - arc.innerRadius) * 0.5;
+        const x = arc.x + Math.cos(midAngle) * labelRadius;
+        const y = arc.y + Math.sin(midAngle) * labelRadius;
+        ctx.save();
+        ctx.font = 'bold 11px "Barlow Condensed", sans-serif';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.shadowColor = 'rgba(0,0,0,0.9)';
+        ctx.shadowBlur = 6;
+        ctx.fillText(percentage.toFixed(1) + '%', x, y);
+        ctx.restore();
+      });
+    }
+  };
+
+  charts[canvasId]=new Chart(document.getElementById(canvasId).getContext('2d'),{
+    type:'doughnut',
+    data:{labels:entries.map(([n])=>n),datasets:[{data:entries.map(([,v])=>v),backgroundColor:palette.slice(0,entries.length),borderWidth:2,borderColor:'#0e1118',hoverOffset:6}]},
+    options:{
+      responsive:false,
+      cutout:'62%',
+      plugins:{
+        legend:{display:false},
+        tooltip:{callbacks:{label:ctx=>{const v=ctx.raw;const p=((v/total)*100).toFixed(1);return` ${p}%  —  ${fmtQ(v)}  (${ctx.label})`;}}}}
+    },
+    plugins:[sliceLabelPlugin]
+  });
+}
+
+function updateCharts(){
+  // Monthly
+  const monthlyRev={};
+  filteredData.forEach(d=>{const k=`${d.sale_year}-${String(d.sale_month).padStart(2,'0')}`;monthlyRev[k]=(monthlyRev[k]||0)+(parseFloat(d.final_sale_price_qar)||0);});
+  const mks=Object.keys(monthlyRev).sort().slice(-24);
+  const mVals=mks.map(k=>monthlyRev[k]);
+  const mAvg=mVals.map((_,i,a)=>{const sl=a.slice(Math.max(0,i-2),i+1);return sl.reduce((s,v)=>s+v,0)/sl.length;});
+  destroyChart('chartMonthly');
+  charts['chartMonthly']=new Chart(document.getElementById('chartMonthly').getContext('2d'),{
+    data:{labels:mks,datasets:[{type:'bar',data:mVals,backgroundColor:'rgba(245,166,35,0.65)',borderColor:'#f5a623',borderWidth:1,borderRadius:3,label:'Revenue'},{type:'line',data:mAvg,borderColor:'#2ec4b6',borderWidth:2,pointRadius:0,tension:0.4,fill:false,label:'3M Avg'}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{color:'#94a3b8',font:{size:10},boxWidth:12}},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${fmtQ(ctx.raw)}`}}},scales:{x:{ticks:{color:'#4b5a70',font:{size:9},maxRotation:45},grid:{color:'#1a2030'}},y:{ticks:{color:'#4b5a70',font:{size:9},callback:v=>fmtQ(v)},grid:{color:'#1a2030'}}}}
+  });
+
+  // Category donut
+  buildDonutPanel('catDonutPanel','category','final_sale_price_qar',PALETTE,'Total',160);
+
+  // Brand bars
+  const brandRev=groupSum(filteredData,'brand','final_sale_price_qar');
+  const totalBrandRev=Object.values(brandRev).reduce((a,b)=>a+b,0);
+  const topBrands=Object.entries(brandRev).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  const maxB=topBrands[0]?.[1]||1;
+  document.getElementById('brandBars').innerHTML=topBrands.map(([name,val],i)=>{
+    const barPct=((val/maxB)*100).toFixed(1);
+    return`<div class="brand-row"><div class="brand-rank">${i+1}</div><div class="brand-name" title="${name}">${name}</div><div class="brand-bar-wrap"><div class="brand-bar-fill" style="width:${barPct}%"></div></div><div class="brand-value">${fmtQ(val)}</div></div>`;
+  }).join('');
+
+  // Top customers
+  const custRev=groupSum(filteredData,'company_name','final_sale_price_qar');
+  const topCust=Object.entries(custRev).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const custTotal=topCust.reduce((a,[,v])=>a+v,0);
+  destroyChart('chartTopCust');
+  charts['chartTopCust']=new Chart(document.getElementById('chartTopCust').getContext('2d'),{
+    type:'bar',
+    data:{labels:topCust.map(([n])=>n.length>36?n.slice(0,36)+'…':n),datasets:[{data:topCust.map(([,v])=>v),backgroundColor:PALETTE.map(c=>c+'cc'),borderColor:PALETTE,borderWidth:1,borderRadius:3}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{title:ctx=>topCust[ctx[0].dataIndex][0],label:ctx=>fmtQ(ctx.raw)}}},scales:{x:{ticks:{color:'#4b5a70',font:{size:9},callback:v=>fmtQ(v)},grid:{color:'#1a2030'}},y:{ticks:{color:'#94a3b8',font:{size:10}},grid:{display:false}}}}
+  });
+
+  // Donuts
+  buildDonutPanel('payDonutPanel','payment_type','final_sale_price_qar',PALETTE,'Revenue',150);
+  buildDonutPanel('custDonutPanel','customer_type','final_sale_price_qar',[PALETTE[2],PALETTE[3],PALETTE[5],PALETTE[4],PALETTE[6]],'Revenue',150);
+  buildDonutPanel('chanDonutPanel','sale_channel','final_sale_price_qar',[PALETTE[1],PALETTE[0],PALETTE[3],PALETTE[4],PALETTE[5]],'Revenue',150);
+
+  // Region
+  const regRev=groupSum(filteredData,'region','final_sale_price_qar');
+  const regEntries=Object.entries(regRev).sort((a,b)=>b[1]-a[1]);
+  const regTotal=regEntries.reduce((a,[,v])=>a+v,0);
+  destroyChart('chartRegion');
+  charts['chartRegion']=new Chart(document.getElementById('chartRegion').getContext('2d'),{
+    type:'bar',
+    data:{labels:regEntries.map(([n])=>n),datasets:[{data:regEntries.map(([,v])=>v),backgroundColor:'rgba(46,196,182,0.7)',borderColor:'#2ec4b6',borderWidth:1,borderRadius:3}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmtQ(ctx.raw)}}},scales:{x:{ticks:{color:'#4b5a70',font:{size:9},callback:v=>fmtQ(v)},grid:{color:'#1a2030'}},y:{ticks:{color:'#94a3b8',font:{size:10}},grid:{display:false}}}}
+  });
+
+  // Inventory donut
+  buildDonutPanel('invDonutPanel','inventory_status','final_sale_price_qar',['#22d3a5','#f5a623','#f43f5e'],'Revenue',150);
+
+  // Project
+  const projRev=groupSum(filteredData,'project_type','final_sale_price_qar');
+  const projEntries=Object.entries(projRev).sort((a,b)=>b[1]-a[1]);
+  const projTotal=projEntries.reduce((a,[,v])=>a+v,0);
+  destroyChart('chartProject');
+  charts['chartProject']=new Chart(document.getElementById('chartProject').getContext('2d'),{
+    type:'bar',
+    data:{labels:projEntries.map(([n])=>n),datasets:[{data:projEntries.map(([,v])=>v),backgroundColor:PALETTE.map(c=>c+'99'),borderColor:PALETTE,borderWidth:1,borderRadius:3}]},
+    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmtQ(ctx.raw)}}},scales:{x:{ticks:{color:'#4b5a70',font:{size:9},callback:v=>fmtQ(v)},grid:{color:'#1a2030'}},y:{ticks:{color:'#94a3b8',font:{size:10}},grid:{display:false}}}}
+  });
+
+  // YoY
+  const yoyRev=groupSum(filteredData,'sale_year','final_sale_price_qar');
+  const yoyKeys=Object.keys(yoyRev).sort();
+  const yoyVals=yoyKeys.map(k=>yoyRev[k]);
+  const yoyTotal=yoyVals.reduce((a,b)=>a+b,0);
+  destroyChart('chartYoY');
+  charts['chartYoY']=new Chart(document.getElementById('chartYoY').getContext('2d'),{
+    type:'bar',
+    data:{labels:yoyKeys,datasets:[{data:yoyVals,backgroundColor:yoyVals.map((_,i)=>i===yoyVals.length-1?'rgba(245,166,35,0.9)':'rgba(245,166,35,0.4)'),borderColor:'#f5a623',borderWidth:1,borderRadius:4}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>fmtQ(ctx.raw)}}},scales:{x:{ticks:{color:'#94a3b8',font:{size:11}},grid:{display:false}},y:{ticks:{color:'#4b5a70',font:{size:9},callback:v=>fmtQ(v)},grid:{color:'#1a2030'}}}}
+  });
+
+  // Engine & Warranty donuts
+  buildDonutPanel('engineDonutPanel','engine_type','final_sale_price_qar',[PALETTE[3],PALETTE[4],PALETTE[0],PALETTE[6]],'Fleet',150);
+  buildDonutPanel('warrantyDonutPanel','warranty_status','final_sale_price_qar',['#22d3a5','#f43f5e'],'Coverage',150);
+}
+
+function pillClass(cat){if(!cat)return'pill-other';const c=cat.toLowerCase();if(c.includes('construct'))return'pill-construction';if(c.includes('crane'))return'pill-crane';if(c.includes('truck')||c.includes('vehicle')||c.includes('transport'))return'pill-truck';if(c.includes('fork'))return'pill-forklift';if(c.includes('sweep'))return'pill-sweeper';if(c.includes('agri'))return'pill-agri';return'pill-other';}
+function invClass(s){if(!s)return'';if(s.includes('Fast'))return'inv-fast';if(s.includes('Medium'))return'inv-medium';return'inv-slow';}
+
+function updateTable(){
+  const start=(currentPage-1)*PAGE_SIZE;
+  const page=filteredData.slice(start,start+PAGE_SIZE);
+  document.getElementById('tableBody').innerHTML=page.map(d=>`
+    <tr>
+      <td style="color:var(--muted);font-size:11px;font-family:'Barlow Condensed',sans-serif">${d.customer_id??'—'}</td>
+      <td style="font-weight:500;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${d.company_name??''}">${d.company_name??'—'}</td>
+      <td style="font-weight:700;color:var(--accent);font-family:'Barlow Condensed',sans-serif;letter-spacing:.04em">${d.brand??'—'}</td>
+      <td><span class="pill ${pillClass(d.category)}">${d.category??'—'}</span></td>
+      <td style="color:var(--text2);font-size:11px">${d.model??'—'}</td>
+      <td style="text-align:center;font-family:'Barlow Condensed',sans-serif;font-size:15px;font-weight:700">${d.quantity??'—'}</td>
+      <td style="font-size:11px">QAR ${(d.unit_price_qar??0).toLocaleString()}</td>
+      <td style="font-weight:700;color:var(--accent);font-family:'Barlow Condensed',sans-serif">QAR ${Math.round(d.final_sale_price_qar??0).toLocaleString()}</td>
+      <td style="font-size:11px;color:var(--text2)">${d.sale_channel??'—'}</td>
+      <td style="font-size:11px;color:var(--text2)">${d.region??'—'}</td>
+      <td style="font-size:11px">${d.sale_date??'—'}</td>
+      <td><span class="pill ${invClass(d.inventory_status)}">${d.inventory_status??'—'}</span></td>
+    </tr>`).join('');
+
+  const total=Math.ceil(filteredData.length/PAGE_SIZE);
+  const pages=[];
+  if(currentPage>1)pages.push(`<button class="page-btn" onclick="goPage(${currentPage-1})">← Prev</button>`);
+  const sp=Math.max(1,currentPage-2),ep=Math.min(total,sp+4);
+  for(let i=sp;i<=ep;i++)pages.push(`<button class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`);
+  if(currentPage<total)pages.push(`<button class="page-btn" onclick="goPage(${currentPage+1})">Next →</button>`);
+  document.getElementById('pagination').innerHTML=pages.join('');
+}
+
+function goPage(p){currentPage=p;updateTable();document.querySelector('.card:last-child')?.scrollIntoView({behavior:'smooth',block:'start'});}
+
+// ═══════════════════════════════════════════════════════════════
+//  AI NBA ENGINE  —  OpenAI GPT-4o
+// Key lives in Cloudflare Pages env var OPENAI_API_KEY — never in source code.
+// ═══════════════════════════════════════════════════════════════
+
+// Populate company dropdown after data loads
+function populateNBACompanies() {
+  const sel = document.getElementById('nbaCompany');
+  if (!sel) return;
+  const companies = [...new Set(allData.map(d => d.company_name).filter(Boolean))].sort();
+  sel.innerHTML = '<option value="">— choose a client —</option>' +
+    companies.map(c => `<option value="${c}">${c}</option>`).join('');
+}
+
+function quickRun(company, useCase) {
+  const cs = document.getElementById('nbaCompany');
+  const uc = document.getElementById('nbaUseCase');
+  if (cs) cs.value = company;
+  if (uc) uc.value = useCase;
+  document.querySelectorAll('.usecase-pill').forEach(p => p.classList.remove('active'));
+  event.target.classList.add('active');
+  runNBA();
+}
+
+// Build rich client context from the dataset
+function buildClientContext(company) {
+  const rows = allData.filter(d => d.company_name === company);
+  if (!rows.length) return null;
+
+  const totalRev     = rows.reduce((a,b) => a + (parseFloat(b.final_sale_price_qar)||0), 0);
+  const totalUnits   = rows.reduce((a,b) => a + (parseFloat(b.quantity)||0), 0);
+  const avgDiscount  = rows.reduce((a,b) => a + (parseFloat(b.discount_percentage)||0), 0) / rows.length;
+  const avgLoyalty   = rows.reduce((a,b) => a + (parseFloat(b.loyalty_score)||0), 0) / rows.length;
+  const avgChurn     = rows.reduce((a,b) => a + (parseFloat(b.churn_risk_score)||0), 0) / rows.length;
+  const serviceTot   = rows.reduce((a,b) => a + (parseFloat(b.service_revenue_to_date_qar)||0), 0);
+  const partsTot     = rows.reduce((a,b) => a + (parseFloat(b.parts_revenue_to_date_qar)||0), 0);
+  const avgCLV       = rows.reduce((a,b) => a + (parseFloat(b.total_customer_lifetime_value_qar)||0), 0) / rows.length;
+
+  const brands       = [...new Set(rows.map(d => d.brand).filter(Boolean))];
+  const categories   = [...new Set(rows.map(d => d.category).filter(Boolean))];
+  const channels     = [...new Set(rows.map(d => d.sale_channel).filter(Boolean))];
+  const regions      = [...new Set(rows.map(d => d.region).filter(Boolean))];
+  const projects     = [...new Set(rows.map(d => d.project_type).filter(Boolean))];
+  const payments     = [...new Set(rows.map(d => d.payment_type).filter(Boolean))];
+  const custType     = rows[0]?.customer_type || 'Unknown';
+  const warrantyOut  = rows.filter(d => d.warranty_status === 'Expired').length;
+  const slowInv      = rows.filter(d => d.inventory_status === 'Slow-Moving').length;
+
+  // Recent purchases (last 5 unique models)
+  const recentModels = [...new Set(rows.map(d => `${d.brand} ${d.model}`).filter(Boolean))].slice(0,5);
+
+  // YoY trend
+  const byYear = {};
+  rows.forEach(d => { const y = d.sale_year; byYear[y] = (byYear[y]||0) + (parseFloat(d.final_sale_price_qar)||0); });
+  const yearTrend = Object.entries(byYear).sort().map(([y,v]) => `${y}: QAR ${(v/1e6).toFixed(1)}M`).join(', ');
+
+  return {
+    company, custType, totalRev, totalUnits, avgDiscount: avgDiscount.toFixed(1),
+    avgLoyalty: avgLoyalty.toFixed(0), avgChurn: avgChurn.toFixed(2),
+    serviceTot, partsTot, avgCLV, brands, categories, channels, regions,
+    projects, payments, recentModels, yearTrend, warrantyOut, slowInv,
+    txCount: rows.length
+  };
+}
+
+// Build the system + user prompt based on use case
+function buildPrompt(ctx, useCase) {
+
+  // ── Company-specific intelligence profiles ─────────────────────────────
+  const COMPANY_INTEL = {
+    'Ashghal (Public Works Authority)': {
+      profile: 'Qatar\'s primary infrastructure authority managing QAR 45B+ road, drainage, and infrastructure programs including Expressway Program Phase 2, Drainage masterplan, and Rural Roads development. Operates 2,000+ pieces of heavy equipment across 400+ active sites nationwide.',
+      currentProjects: 'Expressway Program Phase 2 (Abu Hamour interchange, Al Wakra bypass), Doha Metro feeder road upgrades, Al Khor coastal road, Simaisma rural development, Mesaieed Industrial Link Road Phase 3',
+      painPoints: 'Fleet availability during peak construction (Oct-Apr), spare parts lead times causing 2-4 week downtime, aging compactor and grader fleet due replacement, fuel efficiency pressure under new govt mandates',
+      buyingCycle: 'Annual CAPEX budget approved Oct-Nov, major tenders Q1 (Jan-Mar), emergency procurement year-round. Ministry of Finance approval required >QAR 5M',
+      decisionMakers: 'Director of Projects, Fleet Manager (Procurement Dept), Site Engineers (recommend brands)',
+      competitors: 'FAMCO (Volvo CE, Caterpillar via Al-Bahar), United Development Company equipment division, direct China imports (XCMG, SANY) gaining price advantage',
+      untappedNeeds: 'Road sweeper fleet expansion (Doha growing 15% annually), GPS fleet telematics, fuel monitoring systems, operator training programs'
+    },
+    'Kahramaa': {
+      profile: 'Qatar General Electricity & Water Corporation — monopoly utility with QAR 12B annual capex, Green Qatar initiative (1B trees), infrastructure expansion to support 3M population target by 2030. 180+ active construction sites.',
+      currentProjects: 'Substation expansion program (230kV, 400kV upgrades), water network phase 7 expansion, Lusail utility tunnels, Ras Abu Fontas desalination plant equipment, solar integration projects',
+      painPoints: 'Specialized lifting equipment for substation transformers (heavy lift >200T), confined-space forklifts for utility tunnels, diesel generator backup fleet aging, SCADA equipment transport logistics',
+      buyingCycle: 'Budget cycle aligns with Qatar fiscal year (Jan-Dec). Large capital purchases require Board approval. Framework agreements preferred for recurring items.',
+      decisionMakers: 'VP Projects, Chief Procurement Officer, Substation Project Managers',
+      competitors: 'Eaton (via Gulf Commercial), Liebherr direct, Manitowoc cranes direct. Kahramaa increasingly exploring direct OEM relationships.',
+      untappedNeeds: 'Specialized transformer-handling forklifts (15-50T capacity), aerial work platforms for HV line maintenance, Grove all-terrain cranes for substation work, CompAir breathing air systems'
+    },
+    'Qatar Rail': {
+      profile: 'Operates and expands Qatar\'s Doha Metro (4 lines, 37 stations) and Lusail Tram. Now entering Phase 2: expansion to Al Wakra, Al Khor, Hamad Airport Terminal 2 connection. QAR 8B Phase 2 budget approved.',
+      currentProjects: 'Red Line North Extension to Al Khor, Gold Line extension to Al Wakra, Hamad Airport Terminal 2 metro link, Lusail Tram network expansion, depot maintenance facility upgrades',
+      painPoints: 'Specialized rail-compatible maintenance equipment, confined tunnel access vehicles, heavy lifting in restricted depot spaces, 24/7 maintenance window requirements (02:00-05:00 only)',
+      buyingCycle: 'EPPM (Enterprise Project Portfolio Management) procurement cycle. Main equipment tenders Jan-Mar. Maintenance contracts renewed annually Oct.',
+      decisionMakers: 'Head of Asset Management, Depot Engineering Manager, Procurement & Contracts VP',
+      competitors: 'Alstom (integrated supply), Siemens Mobility (rail-specific), specialized rail MRO suppliers from Europe',
+      untappedNeeds: 'Rail-compatible JCB telehandlers, TCM electric forklifts for depot (zero emissions mandate), CompAir rail-grade air compressors, Grove cranes for track laying equipment'
+    },
+    'HBK Contracting': {
+      profile: 'Qatar\'s largest private contractor with QAR 6B+ active projects. Key contractor on Lusail development, Hamad Port Phase 2, industrial buildings. Fleet of 3,000+ equipment pieces. Family-owned, aggressive growth mode.',
+      currentProjects: 'Lusail Commercial Boulevard Package 3, Hamad Port warehouse complex, QatarEnergy LNG expansion civil works, Al Wakra sports complex, multiple villa compound projects',
+      painPoints: 'Fleet utilization optimization across 60+ sites, inter-site equipment transfer costs, machine downtime impacting penalty clauses (LDs), need for telematics/GPS tracking solution',
+      buyingCycle: 'Rolling procurement based on project wins. Senior management (CEO/COO level) approves >QAR 3M. Fast-track procurement for project starts common.',
+      decisionMakers: 'CEO, General Manager Equipment, Project Directors (site-level recommendations)',
+      competitors: 'FAMCO/Al-Bahar (Caterpillar dominant in their fleet), Zahid Tractor (Komatsu), GAC (Hitachi)',
+      untappedNeeds: 'JCB 3CX/4CX backhoe fleet expansion, DAF tipper trucks for earthworks, Grove RT cranes for industrial projects, full telematics package, operator training certification'
+    },
+    'QDVC (Qatar Diyar Vinci Construction)': {
+      profile: 'JV between Qatari Diar and VINCI Construction — focuses on complex infrastructure: Doha Metro (was main contractor), Expressway packages, airport works. European standards, technical precision required.',
+      currentProjects: 'Expressway Program Package 1 (Al Rayyan Road), QAR 2.1B Hamad Airport North Expansion, Lusail Marina District civil, Ras Laffan port access road',
+      painPoints: 'EU-standard compliance for equipment (Stage V emissions), BIM-integrated equipment scheduling, strict health & safety certification requirements, French management culture prefers European brands',
+      buyingCycle: 'Project-by-project procurement with Paris-based approval for >€2M. Local PM has budget autonomy up to QAR 500K.',
+      decisionMakers: 'Country Director, Technical Director, Procurement Manager (reports to Paris)',
+      competitors: 'Liebherr direct (preferred for cranes), Putzmeister (concrete), Manitou (telehandlers)',
+      untappedNeeds: 'Stage V compliant JCB machines, Grove GMK cranes (EU-certified), DAF Euro 6 trucks, CompAir Stage V compressors, full service SLA with French-language reporting'
+    },
+    'Milaha': {
+      profile: 'Qatar\'s leading maritime & logistics group — operates Hamad Port terminals, offshore marine vessels, logistics warehouses, and Qatar Gas logistics. QAR 3.2B revenue. Fleet of 1,200+ forklifts and port handling equipment.',
+      currentProjects: 'Hamad Port Berth 8-12 expansion, LNG carrier fleet expansion (7 new vessels), Ras Laffan logistics hub Phase 3, cold chain warehouse expansion (Thermo King units)',
+      painPoints: '24/7 port operations require zero-downtime equipment, salt/marine corrosion reducing forklift lifespan, refrigerated container handling specialist units shortage, dangerous goods handling certification',
+      buyingCycle: 'Port equipment: 5-year capex cycle (next cycle 2025-2026). Maintenance contracts: annual renewal Jan. Emergency procurement: any time.',
+      decisionMakers: 'Chief Operations Officer, VP Port Operations, Fleet Engineering Manager',
+      competitors: 'Crown (forklifts direct), Hyster-Yale (port handling), Konecranes (RTGs/STSs)',
+      untappedNeeds: 'TCM large-capacity forklifts (5-25T) for container handling, Thermo King reefer container units fleet expansion, CompAir nitrogen generation for tire inflation, Caltex marine lubricants program'
+    },
+    'Nakilat': {
+      profile: 'Qatar Gas Transport Company — world\'s largest LNG shipping fleet operator (69 vessels). Shore-side facility at Ras Laffan Shipyard (N-KOM) maintains fleet. Massive equipment needs for dry-dock operations.',
+      currentProjects: 'Q-Max vessel dry-dock cycle (4 vessels/year), N-KOM shipyard capacity expansion, QatarEnergy LNG expansion fleet support (new vessels 2026-2028), Ras Laffan logistics',
+      painPoints: 'Specialist heavy-lift for LNG carrier components (propeller shafts, turbochargers), confined-space equipment for tank entry, ATEX-certified equipment for gas environments',
+      buyingCycle: 'QatarEnergy-aligned procurement cycles. Major equipment: annual capex. Shipyard consumables: monthly framework.',
+      decisionMakers: 'N-KOM Technical Director, Fleet Engineering VP, Procurement (aligned with QatarEnergy standards)',
+      competitors: 'Enerpac (hydraulic lifting), SPX (industrial tools), direct OEM for shipyard equipment',
+      untappedNeeds: 'ATEX-certified CompAir compressors, Grove heavy-lift cranes for dry-dock, TCM ATEX forklifts, Caltex specialty marine lubricants, Allison marine transmission service'
+    },
+    'Qatar Petroleum (QP)': {
+      profile: 'QatarEnergy (rebranded) — NOC controlling all hydrocarbon resources. QAR 200B+ LNG expansion program (NFE/NFS projects). 40,000+ employees. Ras Laffan Industrial City is primary hub.',
+      currentProjects: 'North Field East LNG expansion (4 new trains, QAR 85B), North Field South (2 trains), Al Shaheen field development, Ras Laffan Industrial City expansion, Golden Pass LNG (USA — but equipment sourced from Qatar)',
+      painPoints: 'ATEX/HAZLOC certified equipment mandatory, TOTAL/QatarEnergy approved vendor list required, 12-24 month procurement cycles, extreme reliability requirements (no LDs risk)',
+      buyingCycle: 'Approved Vendor List (AVL) registration first. Main CAPEX: multi-year project-linked. Opex: annual framework agreements.',
+      decisionMakers: 'VP Procurement, Project Directors (EPC-linked), Asset Integrity Manager',
+      competitors: 'Caterpillar (industry standard, major competitor), Liebherr (cranes), Atlas Copco (compressors — major CompAir competitor)',
+      untappedNeeds: 'ATEX CompAir compressors (certified for Zone 1/2), Allison automatic transmissions for oilfield trucks, Caltex QatarEnergy-approved lubricants program, DAF Euro 6 support vehicles'
+    },
+    'Woqod': {
+      profile: 'Qatar Fuel (WOQOD) — sole petrol station operator + LPG distribution + vehicle inspection. 125 stations nationwide. Fleet of 200+ fuel tankers, LPG trucks, and maintenance vehicles.',
+      currentProjects: 'New station rollout (15 stations/year under Vision 2030), LPG network expansion to northern Qatar, vehicle inspection center expansion (Fahes), EV charging infrastructure pilot',
+      painPoints: 'Fuel tanker fleet aging (average 8 years, replacement due), LPG truck specialized maintenance, station canopy maintenance equipment, EV transition requiring new service equipment',
+      buyingCycle: 'Annual fleet replacement program approved by Board. Average 20-25 trucks/year replacement cycle.',
+      decisionMakers: 'Fleet Director, Operations VP, CEO (for strategic fleet changes)',
+      competitors: 'MAN Trucks (via local dealer), Scania (direct), Mercedes-Benz trucks',
+      untappedNeeds: 'DAF LF/XF tanker trucks (fuel-efficient, Euro 6), Allison automatic transmissions for tankers (safety in fuel operations), Caltex fleet lubricant program, DAF driver training'
+    },
+    'Barwa Real Estate': {
+      profile: 'Qatar\'s largest listed real estate developer. Barwa Al Khor, Barwa Commercial Avenue, Madinat Mawater (auto village). 15,000+ housing units under management. Active construction arm.',
+      currentProjects: 'Barwa Al Khor expansion (Phase 3, 2,000 units), Madinat Mawater Phase 2, Barwa Village maintenance, social housing projects for Ministry of Municipality',
+      painPoints: 'Large-scale landscaping and facilities management equipment needs, tight construction timelines for handover, sustainable building requirements (GSAS rating)',
+      buyingCycle: 'Project-linked procurement. Annual FM equipment budget approved Q4.',
+      decisionMakers: 'Projects Director, Facilities Management Director, Procurement Manager',
+      competitors: 'ENMA (local FM equipment), various landscaping equipment dealers',
+      untappedNeeds: 'JCB compact equipment for housing site work, Massey Ferguson tractors for large-scale landscaping, Dulevo sweepers for Madinat Mawater auto village, TCM forklifts for materials handling'
+    },
+    'Midmac Contracting': {
+      profile: 'Prominent Qatari contractor (part of Power International). Key projects in oil & gas, infrastructure, buildings. 40+ years in Qatar. Fleet of 800+ equipment pieces.',
+      currentProjects: 'QatarEnergy Ras Laffan plant maintenance works, road rehabilitation contracts, Doha municipality infrastructure, commercial building projects in Lusail',
+      painPoints: 'Aging equipment fleet (some 10+ year old machines), difficulty attracting skilled operators, project margin pressure requiring lower equipment costs',
+      buyingCycle: 'Annual budget cycle. Management committee approval >QAR 2M. Flexible on payment terms (LC, installment).',
+      decisionMakers: 'CEO, Equipment Manager, Finance Director',
+      competitors: 'FAMCO/Al-Bahar, Zahid Tractor, used equipment market from Saudi Arabia',
+      untappedNeeds: 'JCB 3CX fleet refresh, DAF tipper trucks, full-service Gold package to reduce downtime, trade-in program for aging fleet, operator training'
+    },
+    'Hamad Medical Corporation': {
+      profile: 'Qatar\'s primary public healthcare system — 14 hospitals, 27 primary health centers. QAR 8B annual budget. Massive logistics, waste management, and facilities operations.',
+      currentProjects: 'Al Wakra Hospital expansion, North Hospital (new greenfield), Qatar Rehabilitation Institute expansion, medical city masterplan Lusail',
+      painPoints: 'Sterile/clean room compatible forklifts, refrigerated medical supply logistics (cold chain critical), hospital waste management equipment, 24/7 operational continuity required',
+      buyingCycle: 'Ministry of Public Health aligned procurement. Annual tender cycles. Emergency procurement via Hukoomi portal.',
+      decisionMakers: 'Facilities Director, Logistics VP, Procurement (MOPH guidelines)',
+      competitors: 'Jungheinrich (clean room forklifts), Crown (hospital-spec), Toyota Material Handling',
+      untappedNeeds: 'TCM electric forklifts (zero emission, hospital corridors), Thermo King refrigerated units for medical supply chain, CompAir clean air systems for medical facilities'
+    }
+  };
+
+  // ── Category-specific product intelligence ─────────────────────────────
+  const CATEGORY_INTEL = {
+    'Construction Equipment': {
+      key_products: 'JCB 3CX/4CX Backhoe Loader (market leader in Qatar), JCB 220X/330X Excavator, JCB 457 Wheeled Loader, JCB Vibromax compactors, Grove RT890E rough terrain crane',
+      replacement_trigger: '5-7 year cycle or 10,000 hours; Qatar heat accelerates engine wear by 20%',
+      margin_note: 'Highest margin category. Parts revenue = 35% of machine value over lifetime. Push extended warranty.',
+      upsell: 'LiveLink telematics, Tier 4 Final/Stage V upgrade discussions, JCB Finance lease structures'
+    },
+    'Crane & Lifting': {
+      key_products: 'Grove GMK5250L All-Terrain (flagship, 250T), Grove RT890E Rough Terrain (90T), Grove GRT8100 (100T), Manitowoc 18000 crawler crane',
+      replacement_trigger: '10-15 year cycle. SLI (Safe Load Indicator) certification required annually in Qatar.',
+      margin_note: 'Highest value transactions (QAR 2-8M per unit). Long sales cycle (6-18 months). Relationship-critical.',
+      upsell: 'Annual SLI certification service contract, boom extension attachments, Crane Care service program'
+    },
+    'Trucks & Transport': {
+      key_products: 'DAF XF 530 FT (long haul), DAF CF 480 FAT (tipper/concrete), DAF LF 260 (urban distribution), Foton Auman GTL (value segment)',
+      replacement_trigger: '3-5 years or 500,000km in Qatar conditions',
+      margin_note: 'Volume play. Fleet deals >10 units attract better margin from OEM. Push Allison auto transmission as upfit.',
+      upsell: 'Allison TC10 automatic transmission (+QAR 35,000/unit, reduced driver fatigue), DAF MultiSupport contracts, Caltex fleet lubricant program'
+    },
+    'Forklifts & Material Handling': {
+      key_products: 'TCM FHD35T3 (3.5T diesel, workhorse), TCM FHD50T3 (5T heavy duty), TCM FG15T3 (electric, indoor), TCM reach trucks for racking',
+      replacement_trigger: '3-5 years or 8,000 hours. Rental market growing — consider fleet rental pitch.',
+      margin_note: 'High volume, recurring parts revenue. Service contracts critical — 70% of customers with service contracts reorder within 3 years.',
+      upsell: 'Full maintenance contract, operator certification training, attachment accessories (side-shift, clamps), TCM telematics'
+    },
+    'Refrigeration & Temperature Control': {
+      key_products: 'Thermo King SLXi 400 (trailer unit), Thermo King V-320 (van refrigeration), Thermo King Precedent S-700 (heavy-duty), APX (electric standby)',
+      replacement_trigger: '5-7 years. Qatar heat (50°C) stresses units 30% harder than European benchmark.',
+      margin_note: 'Annuity revenue through maintenance contracts. Food/pharma logistics booming in Qatar pre-2030.',
+      upsell: 'Connected monitoring (ThermoKing Connected), preventive maintenance contracts, fuel saver mode upgrade'
+    },
+    'Road Maintenance & Sweeping': {
+      key_products: 'Dulevo 5000 Evolution (large municipal sweeper), Dulevo 200 Evo (compact urban), Dulevo D.ZERO Electric (zero emission), Dulevo International 6000',
+      replacement_trigger: '5-7 years. Municipal contracts typically specify annual fleet refresh.',
+      margin_note: 'Government tender-driven. Build relationships with municipality procurement 6-9 months before tender.',
+      upsell: 'GPS tracking integration, water recycling system, dust suppression attachment, annual parts kit'
+    },
+    'Air Compressors & Power': {
+      key_products: 'CompAir L90-10 (90kW portable), CompAir C76-10 (variable speed), CompAir C355SR (large industrial), Hydrovane HV07 (workshop)',
+      replacement_trigger: '7-10 years for industrial, 3-5 for portable.',
+      margin_note: 'Parts and service generate 3x machine margin over lifetime. Push 5-year total care contracts.',
+      upsell: 'CompAir Total Care contract, compressed air audit, nitrogen generator add-on, energy efficiency upgrade'
+    },
+    'Agriculture & Landscaping': {
+      key_products: 'Massey Ferguson MF 4708 (80hp utility tractor), MF 6718S (185hp, large acreage), MF 5711 (compact), MF hay/silage attachments',
+      replacement_trigger: '7-10 years. Qatar green initiatives (Baladiya, Ashghal) driving new demand.',
+      margin_note: 'Lower volume but growing with Vision 2030 green mandates. Bundle with implements for value.',
+      upsell: 'GPS-guided precision agriculture attachments, full implement package (plough, disc harrow, spreader), extended warranty'
+    }
+  };
+
+  // Build category-specific context
+  const catIntel = ctx.categories.map(c => {
+    const key = Object.keys(CATEGORY_INTEL).find(k => c.toLowerCase().includes(k.toLowerCase().split(' ')[0]));
+    return key ? `\nCATEGORY [${c}]: ${JSON.stringify(CATEGORY_INTEL[key])}` : '';
+  }).filter(Boolean).join('\n');
+
+  // Get company-specific intel if available
+  const companyKey = Object.keys(COMPANY_INTEL).find(k =>
+    ctx.company.toLowerCase().includes(k.toLowerCase().split(' ')[0]) ||
+    k.toLowerCase().includes(ctx.company.toLowerCase().split(' ')[0])
+  );
+  const companyData = companyKey ? COMPANY_INTEL[companyKey] : null;
+
+  // ── SYSTEM PROMPT ───────────────────────────────────────────────────────
+  const system = `You are the senior sales intelligence director at Mannai Trading Co. WLL (Al Manai Group), Qatar's leading heavy equipment distributor with 40+ years in the market.
+
+MANNAI BRAND PORTFOLIO:
+- JCB: Construction equipment (excavators, backhoes, wheeled loaders, compactors, telehandlers, skid steers)
+- Grove Cranes (Manitowoc): All-terrain, rough terrain, truck-mounted cranes (GMK series 50T-450T)
+- DAF Trucks (PACCAR): XF/CF/LF series — tippers, flatbeds, tankers, concrete mixers, prime movers
+- Thermo King: Trailer/van refrigeration units, APX electric standby
+- Massey Ferguson: Agricultural tractors (30-300hp), implements, combine harvesters
+- TCM Forklifts (Unicarriers): Diesel/LPG/electric forklifts 1.5T-25T, reach trucks, pallet trucks
+- CompAir (Gardner Denver): Industrial/portable air compressors, nitrogen generators, blowers
+- Dulevo: Municipal road sweepers (compact to heavy-duty), electric sweepers (D.ZERO)
+- Allison Transmission: Automatic transmissions for trucks, buses, emergency vehicles
+- Chalwyn: Safety equipment, flame arrestors for hazardous environments
+- Foton: Value-segment commercial trucks, Auman series
+- Caltex (Chevron lubricants): Oils, greases, transmission fluids — full fleet lubricant programs
+
+MANNAI COMPETITIVE ADVANTAGES:
+- Largest spare parts inventory in Qatar (>QAR 50M stock, 24-hour parts guarantee)
+- 3 service centers: Doha Industrial Area, Ras Laffan, Mesaieed
+- Mobile service fleet (22 vans) for on-site repair Qatar-wide
+- Service packages: GOLD (4hr response, 24/7, dedicated technician), SILVER (next-day, business hours), BRONZE (scheduled, monthly visits)
+- Finance solutions: Installment plans, lease options via QNB/QIIB
+- Operator training center (CITB-accredited, Arabic/English)
+- Factory-trained technicians (JCB Gold Dealer, Grove Service Center)
+- OEM-backed warranty: JCB 2yr/3000hr, DAF 2yr/unlimited km, Grove 2yr
+
+QATAR MARKET INTELLIGENCE (2024-2026):
+- Ashghal Phase 2 Expressway Program: QAR 18B, 2024-2028 (Al Wakra bypass, Simaisma road, industrial link roads)
+- QatarEnergy LNG North Field Expansion: QAR 85B capex, 2024-2030 (4+2 LNG trains, massive civil works)
+- Lusail City completion push: QAR 12B remaining works, 2024-2026 (marina, entertainment city, commercial towers)
+- Qatar National Vision 2030 Green Initiative: 1 billion trees, 600km cycling tracks, urban parks (Dulevo/Massey Ferguson opportunity)
+- Municipality fleet renewal: Doha Municipality replacing 400+ sweepers and trucks 2025-2026
+- Kahramaa Green Hydrogen pilot: new infrastructure requiring specialized compressors (CompAir hydrogen)
+- Qatar Rail Phase 2: QAR 8B approved, Al Khor/Al Wakra extensions starting 2025
+- Ras Laffan expansion: 3 new industrial plots allocated, tenant fit-out creating equipment demand
+- FIFA 2022 legacy: 8 stadiums now conference/event venues requiring ongoing maintenance equipment
+- Qatar population growth: 3.2M target by 2030, driving residential/commercial construction boom
+
+COMPETITOR LANDSCAPE:
+- FAMCO/Mohamed Abdulrahman Al-Bahar: Caterpillar (excavators, motor graders), Volvo CE — dominant in construction
+- Zahid Tractor: Komatsu, Dresser-Rand — strong in earthmoving
+- Trags (Al-Attiya): various brands — midmarket
+- Atlas Copco Qatar: direct competitor to CompAir
+- Liebherr Qatar: direct competitor to Grove cranes
+- Toyota Material Handling Qatar: competitor to TCM forklifts
+- MAN Trucks Qatar / Scania Qatar: competitors to DAF trucks
+- Direct China imports (XCMG, SANY, Sinotruk): price pressure in value segment
+
+YOUR TASK: Generate recommendations so specific, detailed, and actionable that the Mannai sales rep can walk into the client meeting with a ready-made pitch. Every recommendation must:
+1. Reference the client's ACTUAL purchase history from the data provided
+2. Name SPECIFIC Mannai products (model numbers where possible)
+3. Reference SPECIFIC Qatar projects or news relevant to this client
+4. Include a CONCRETE talking point the sales rep can use verbatim
+5. Estimate realistic QAR values based on Qatar market pricing
+
+Always respond in valid JSON only. No markdown. For all monetary values return full QAR integers (e.g. 3500000 not 3.5M).`;
+
+  // ── USE-CASE INSTRUCTIONS ───────────────────────────────────────────────
+  const useCaseInstructions = {
+    full: `Generate a complete account intelligence brief with these exact JSON keys:
+- "executive_summary": 3-4 sentence brief on this account's strategic importance to Mannai, their current business situation, and the single biggest opportunity right now
+- "gulf_news_triggers": array of 3 objects {project_name, status, relevance_to_client, equipment_needed: [], estimated_budget_qar, talking_point, urgency}
+- "next_best_actions": array of 5 objects {priority (CRITICAL/HIGH/MEDIUM/LOW), title, description, specific_talking_point (verbatim pitch line), recommended_products: [], estimated_value_qar, timeline, owner, why_now}
+- "upsell_opportunities": array of 3 objects {title, rationale, products: [], estimated_value_qar, probability_pct, best_approach, competitor_risk}
+- "loyalty_assessment": {score (0-100), tier, risk_level, relationship_health, retention_actions: []}
+- "one_line_pitch": single most compelling sentence for the account manager's opening`,
+
+    nba: `Generate next best actions with these exact JSON keys:
+- "one_line_pitch": single most compelling opening sentence
+- "next_best_actions": array of 6 objects {priority (CRITICAL/HIGH/MEDIUM/LOW), title, description, specific_talking_point (exact words the rep should say), recommended_products: [], product_models: [], estimated_value_qar, timeline, owner (Account Manager/Service Team/Sales Director/Technical Consultant), why_now (urgency reason), competitor_risk (who might take this deal if Mannai waits)}`,
+
+    upsell: `Generate revenue expansion opportunities with these exact JSON keys:
+- "peer_benchmark": what similar Qatar companies are buying that this client is NOT (specific gap analysis)
+- "upsell_opportunities": array of 5 objects {title, current_situation (what they have now), recommended_upgrade, rationale, products: [], estimated_value_qar, probability_pct, best_approach, roi_for_client (how this saves/earns the client money)}
+- "cross_sell_opportunities": array of 3 objects {title, rationale, products: [], estimated_value_qar, probability_pct, entry_point (how to start the conversation)}
+- "bundle_deal": one creative bundle combining 2-3 products at a compelling price point with a package name`,
+
+    loyalty: `Generate loyalty and retention intelligence with these exact JSON keys:
+- "loyalty_report": {current_score (0-100), tier (Bronze/Silver/Gold/Platinum), churn_probability (0.0-1.0), wallet_share_estimate (what % of their total equipment spend goes to Mannai), relationship_health_summary}
+- "key_risk_factors": array of specific risks based on their data
+- "loyalty_actions": array of 5 objects {title, description, specific_action (what exactly to do this week), timeline, estimated_impact, responsible_person}
+- "vip_benefits_to_offer": array of 3-4 specific perks tailored to this company
+- "win_back_scenario": if churn risk is high, describe the exact commercial offer and relationship play
+- "relationship_milestones": 3 upcoming events/dates to use as relationship touchpoints (contract renewals, project starts, Eid, National Day)`,
+
+    news: `Generate Gulf market intelligence specific to this client with these exact JSON keys:
+- "gulf_intelligence": {
+    "market_context": 2-3 sentences on Qatar/Gulf market trends directly relevant to this company's business,
+    "project_triggers": array of 5 objects {project_name, project_value_qar, current_status, equipment_needed: [], urgency (IMMEDIATE/3MONTHS/6MONTHS), talking_point (what to say to the client), mannai_products_to_pitch: []},
+    "regulatory_drivers": array of 2 specific Qatar regulations/mandates creating equipment demand for this client,
+    "seasonal_opportunities": array of 2 objects {period, opportunity, action, products: []}
+  }`,
+
+    churn: `Generate churn risk assessment with these exact JSON keys:
+- "churn_analysis": {risk_score (0-100), risk_level (LOW/MEDIUM/HIGH/CRITICAL), last_purchase_recency, spend_trend}
+- "warning_signals": array of specific red flags from their data
+- "root_cause_hypothesis": specific reason this client might be drifting
+- "competitor_threat": {likely_competitor, their_pitch, why_client_might_switch, mannai_counter_argument}
+- "rescue_actions": array of 4 objects {title, description, specific_action (exactly what to do this week), owner, deadline, success_metric}
+- "win_back_offer": {offer_name, description, commercial_terms, products_included: [], total_value_qar, expiry, talking_point}`,
+
+    tender: `Generate tender intelligence with these exact JSON keys:
+- "tender_intelligence": {
+    "known_upcoming_tenders": array of 4 objects {tender_name, issuing_authority, estimated_value_qar, equipment_categories: [], typical_timing, submission_requirements, mannai_advantage, required_certifications},
+    "bid_strategy": array of 3 strategic recommendations for how Mannai should position,
+    "preferred_payment_terms": analysis of best payment structure for this client,
+    "relationship_levers": array of 3 specific pre-tender relationship actions with timelines,
+    "disqualification_risks": array of 2 things that could disqualify Mannai's bid and how to mitigate
+  }`
+  };
+
+  // ── USER PROMPT ─────────────────────────────────────────────────────────
+  const companySection = companyData ? `
+COMPANY INTELLIGENCE PROFILE:
+- Strategic Profile: ${companyData.profile}
+- Current Active Projects: ${companyData.currentProjects}
+- Known Pain Points: ${companyData.painPoints}
+- Buying Cycle: ${companyData.buyingCycle}
+- Key Decision Makers: ${companyData.decisionMakers}
+- Main Competitors Targeting Them: ${companyData.competitors}
+- Untapped Needs (not yet bought from Mannai): ${companyData.untappedNeeds}
+` : `COMPANY TYPE: ${ctx.custType} — apply standard intelligence for this segment in Qatar.`;
+
+  const user = `ACCOUNT TO ANALYZE: ${ctx.company}
+${companySection}
+
+MANNAI TRANSACTION DATA FOR THIS ACCOUNT:
+- Total Revenue: QAR ${(ctx.totalRev).toLocaleString()} (${ctx.txCount} transactions)
+- Units Purchased: ${Math.round(ctx.totalUnits)}
+- Average Discount Given: ${ctx.avgDiscount}% — ${parseFloat(ctx.avgDiscount) > 12 ? 'WARNING: above 12% threshold, margin erosion risk' : 'within acceptable range'}
+- Loyalty Score: ${ctx.avgLoyalty}/100 — ${parseInt(ctx.avgLoyalty) > 70 ? 'strong relationship' : parseInt(ctx.avgLoyalty) > 40 ? 'moderate, needs nurturing' : 'CRITICAL: at risk of churn'}
+- Churn Risk Score: ${ctx.avgChurn}/1.0 — ${parseFloat(ctx.avgChurn) > 0.6 ? 'HIGH RISK' : parseFloat(ctx.avgChurn) > 0.35 ? 'moderate risk' : 'low risk'}
+- Service Revenue to Date: QAR ${(ctx.serviceTot).toLocaleString()} (${ctx.totalRev > 0 ? ((ctx.serviceTot/ctx.totalRev)*100).toFixed(1) : 0}% of total — ${ctx.serviceTot/ctx.totalRev < 0.15 ? 'LOW: major service upsell opportunity' : 'healthy'})
+- Parts Revenue to Date: QAR ${(ctx.partsTot).toLocaleString()}
+- Avg Customer Lifetime Value: QAR ${(ctx.avgCLV).toLocaleString()}
+- Equipment Brands Purchased from Mannai: ${ctx.brands.join(', ')}
+- Equipment Categories: ${ctx.categories.join(', ')}
+- Brands NOT yet purchased (upsell gap): ${['JCB','Grove','DAF','Thermo King','Massey Ferguson','TCM','CompAir','Dulevo','Allison','Caltex'].filter(b => !ctx.brands.some(pb => pb.includes(b))).join(', ') || 'all major brands covered'}
+- Sales Channels: ${ctx.channels.join(', ')}
+- Qatar Delivery Regions: ${ctx.regions.join(', ')}
+- Project Types: ${ctx.projects.join(', ')}
+- Payment Methods: ${ctx.payments.join(', ')}
+- Recent Equipment Models: ${ctx.recentModels.join(', ')}
+- Revenue Trend: ${ctx.yearTrend}
+- Expired Warranties: ${ctx.warrantyOut} units — ${ctx.warrantyOut > 3 ? 'URGENT: warranty renewal opportunity' : 'managed'}
+- Slow-Moving Inventory: ${ctx.slowInv} units — ${ctx.slowInv > 2 ? 'potential: offer trade-in or rental conversion' : 'OK'}
+${catIntel}
+
+CRITICAL INSTRUCTION: Do NOT give generic advice. Every single recommendation must:
+1. Reference this client's SPECIFIC purchase history above
+2. Name specific Mannai product models (e.g. "JCB 220X Excavator" not just "excavator")  
+3. Reference a specific Qatar project or regulation driving the need
+4. Include the EXACT words the sales rep should say to open the conversation
+5. Explain WHY NOW — what changes if they wait 3 months
+
+${useCaseInstructions[useCase] || useCaseInstructions.full}
+
+Be surgical. Be specific. Be Qatar-market expert level. JSON only.`;
+
+  return { system, user };
+}
+
+// Render the AI response
+function renderNBAOutput(data, useCase, company) {
+  const out = document.getElementById('nbaOutput');
+  if (!out) return;
+
+  let html = '';
+
+  // Helper builders
+  // Smart QAR formatter: GPT sometimes returns 3.5 (=3.5M) or 3500000
+  const fmtVal = v => {
+    if (!v && v !== 0) return null;
+    const n = Number(v);
+    if (isNaN(n)) return v;
+    // If value looks like it's already in millions (small decimal like 3.5, 10, 0.8)
+    if (n > 0 && n < 5000) return `QAR ${n.toFixed(n % 1 === 0 ? 0 : 1)}M`;
+    // Large number - format normally
+    if (n >= 1e9) return `QAR ${(n/1e9).toFixed(2)}B`;
+    if (n >= 1e6) return `QAR ${(n/1e6).toFixed(1)}M`;
+    if (n >= 1e3) return `QAR ${(n/1e3).toFixed(0)}K`;
+    return `QAR ${n.toLocaleString()}`;
+  };
+  const priorityClass = p => ({ CRITICAL:'priority-critical', HIGH:'priority-high', MEDIUM:'priority-medium', LOW:'priority-low' }[p] || 'priority-low');
+  const badgeClass    = p => ({ CRITICAL:'badge-critical', HIGH:'badge-high', MEDIUM:'badge-medium', LOW:'badge-low' }[p] || 'badge-low');
+
+  const renderActions = (actions) => actions.map(a => `
+    <div class="action-item ${priorityClass(a.priority)}">
+      <span class="action-badge ${badgeClass(a.priority)}">${a.priority||'INFO'}</span>
+      <div class="action-content">
+        <div class="action-title">${a.title||''}</div>
+        <div class="action-desc">${a.description||a.rationale||''}</div>
+        ${a.specific_talking_point ? `<div style="margin-top:8px;padding:8px 12px;background:rgba(46,196,182,0.08);border-left:2px solid var(--accent3);font-size:12px;color:var(--text);font-style:italic;line-height:1.5">💬 "${a.specific_talking_point}"</div>` : ''}
+        ${a.why_now ? `<div style="margin-top:5px;font-size:11px;color:var(--red)">⚡ Why now: ${a.why_now}</div>` : ''}
+        ${a.competitor_risk ? `<div style="font-size:11px;color:var(--accent);margin-top:2px">⚠ Competitor risk: ${a.competitor_risk}</div>` : ''}
+        ${a.estimated_value_qar ? `<div style="margin-top:5px;font-family:'Barlow Condensed',sans-serif;font-size:13px;font-weight:700;color:var(--green)">Est. Value: ${fmtVal(a.estimated_value_qar)}</div>` : ''}
+        ${a.timeline ? `<div style="font-size:11px;color:var(--muted);margin-top:2px">⏱ ${a.timeline}${a.owner ? '  ·  👤 '+a.owner : ''}</div>` : ''}
+        ${(a.product_models||a.recommended_products||a.products||[]).length ? `<div class="action-products">${(a.product_models||a.recommended_products||a.products).map(p=>`<span class="product-tag">${p}</span>`).join('')}</div>` : ''}
+      </div>
+    </div>`).join('');
+
+  // Executive summary + pitch
+  if (data.executive_summary || data.one_line_pitch) {
+    html += `<div style="background:rgba(245,166,35,0.06);border:1px solid rgba(245,166,35,0.2);padding:16px 18px;margin-bottom:20px">`;
+    if (data.executive_summary) html += `<div style="font-size:13px;line-height:1.65;color:var(--text);margin-bottom:${data.one_line_pitch?'10px':'0'}">${data.executive_summary}</div>`;
+    if (data.one_line_pitch) html += `<div style="font-family:'Barlow Condensed',sans-serif;font-size:14px;font-weight:700;color:var(--accent);letter-spacing:0.04em">💬 "${data.one_line_pitch}"</div>`;
+    html += `</div>`;
+  }
+
+  // Peer benchmark (upsell mode)
+  if (data.peer_benchmark) {
+    html += `<div style="background:rgba(124,111,255,0.07);border:1px solid rgba(124,111,255,0.25);padding:14px 18px;margin-bottom:20px;border-left:3px solid var(--accent4)">
+      <div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.18em;text-transform:uppercase;color:var(--accent4);margin-bottom:6px">📊 Peer Benchmark — What competitors are buying that this client isn't</div>
+      <div style="font-size:13px;line-height:1.65;color:var(--text)">${data.peer_benchmark}</div>
+    </div>`;
+  }
+
+  // Gulf news / triggers
+  if (data.gulf_news_triggers || data.gulf_intelligence?.project_triggers) {
+    const triggers = data.gulf_news_triggers || data.gulf_intelligence?.project_triggers || [];
+    html += `<div class="nba-card" style="margin-bottom:20px">
+      <div class="nba-card-header"><span class="nba-card-icon">📡</span><div class="nba-card-title">Gulf Market Triggers</div></div>
+      <div class="nba-card-body"><div class="news-list">`;
+    triggers.forEach(t => {
+      html += `<div class="news-item">
+        <div class="news-source">${t.project_name||t.source||'Qatar/Gulf Market'}${t.urgency?' · <span style="color:var(--red)">'+t.urgency+'</span>':''}</div>
+        ${t.estimated_budget_qar||t.project_value_qar ? `<div style="font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:var(--green);margin-bottom:3px">Budget: ${fmtVal(t.estimated_budget_qar||t.project_value_qar)}</div>` : ''}
+        <div class="news-headline">${t.title||t.talking_point||t.project_name||t.current_status||''}</div>
+        <div class="news-impact">${t.description||t.impact||t.relevance_to_client||''}</div>
+        ${t.talking_point && t.talking_point !== (t.title||'') ? `<div style="margin-top:6px;padding:6px 10px;background:rgba(46,196,182,0.08);border-left:2px solid var(--accent3);font-size:11px;color:var(--text);font-style:italic">💬 "${t.talking_point}"</div>` : ''}
+        ${(t.mannai_products_to_pitch||t.equipment_needed||[]).length ? '<div class="action-products" style="margin-top:6px">'+(t.mannai_products_to_pitch||t.equipment_needed).map(p=>`<span class="product-tag">${p}</span>`).join('')+'</div>' : ''}
+      </div>`;
+    });
+    html += `</div></div></div>`;
+  }
+
+  // Market context
+  if (data.gulf_intelligence?.market_context) {
+    html += `<div style="background:var(--surface2);border-left:3px solid var(--accent3);padding:12px 16px;margin-bottom:20px;font-size:12px;color:var(--text2);line-height:1.65">${data.gulf_intelligence.market_context}</div>`;
+  }
+
+  // NBA actions
+  const actions = data.next_best_actions || [];
+  if (actions.length) {
+    html += `<div class="nba-card" style="margin-bottom:20px">
+      <div class="nba-card-header"><span class="nba-card-icon">⚡</span><div class="nba-card-title">Next Best Actions</div></div>
+      <div class="nba-card-body"><div class="action-list">${renderActions(actions)}</div></div>
+    </div>`;
+  }
+
+  // Upsell + cross-sell
+  const upsells = data.upsell_opportunities || [];
+  const xsells  = data.cross_sell_opportunities || [];
+  if (upsells.length || xsells.length) {
+    html += `<div class="g2" style="margin-bottom:20px">`;
+    if (upsells.length) {
+      html += `<div class="nba-card">
+        <div class="nba-card-header"><span class="nba-card-icon">📈</span><div class="nba-card-title">Upsell Opportunities</div></div>
+        <div class="nba-card-body"><div class="opp-list">`;
+      upsells.forEach(o => {
+        html += `<div class="opp-item">
+          <div><div class="opp-title">${o.title||''}</div>
+          ${o.current_situation ? `<div style="font-size:11px;color:var(--muted);margin-bottom:4px">Now: ${o.current_situation}</div>` : ''}
+          <div class="opp-desc">${o.rationale||o.description||''}</div>
+          ${o.roi_for_client ? `<div style="margin-top:5px;font-size:11px;color:var(--green)">💰 Client ROI: ${o.roi_for_client}</div>` : ''}
+          ${(o.products||[]).length ? '<div class="action-products" style="margin-top:6px">'+o.products.map(p=>`<span class="product-tag">${p}</span>`).join('')+'</div>' : ''}
+          ${o.best_approach ? `<div style="font-size:11px;color:var(--accent3);margin-top:5px">→ ${o.best_approach}</div>` : ''}
+          ${o.competitor_risk ? `<div style="font-size:11px;color:var(--accent);margin-top:2px">⚠ ${o.competitor_risk}</div>` : ''}</div>
+          <div class="opp-value">${fmtVal(o.estimated_value_qar||o.value_qar)||''}<span>${o.probability_pct ? o.probability_pct+'% prob.' : 'Est. Revenue'}</span></div>
+        </div>`;
+      });
+      html += `</div></div></div>`;
+    }
+    if (xsells.length) {
+      html += `<div class="nba-card">
+        <div class="nba-card-header"><span class="nba-card-icon">🔀</span><div class="nba-card-title">Cross-sell</div></div>
+        <div class="nba-card-body"><div class="opp-list">`;
+      xsells.forEach(o => {
+        html += `<div class="opp-item">
+          <div><div class="opp-title">${o.title||''}</div><div class="opp-desc">${o.rationale||o.description||''}</div>
+          ${(o.products||[]).length ? '<div class="action-products" style="margin-top:6px">'+o.products.map(p=>`<span class="product-tag">${p}</span>`).join('')+'</div>' : ''}
+          </div>
+          <div class="opp-value">${fmtVal(o.estimated_value_qar||o.value_qar)||''}<span>Est.</span></div>
+        </div>`;
+      });
+      html += `</div></div></div>`;
+    }
+    html += `</div>`;
+  }
+
+  // Loyalty / churn
+  const loyalty = data.loyalty_assessment || data.loyalty_report || {};
+  const churn   = data.churn_analysis || {};
+  if (Object.keys(loyalty).length || Object.keys(churn).length) {
+    const src = Object.keys(loyalty).length ? loyalty : churn;
+    const score = src.current_score || src.score || src.churn_probability*100 || 0;
+    const riskColor = score > 70 ? 'var(--red)' : score > 40 ? 'var(--accent)' : 'var(--green)';
+    html += `<div class="nba-card" style="margin-bottom:20px">
+      <div class="nba-card-header"><span class="nba-card-icon">${Object.keys(churn).length ? '⚠️' : '💎'}</span><div class="nba-card-title">${Object.keys(churn).length ? 'Churn Risk Analysis' : 'Loyalty Assessment'}</div></div>
+      <div class="nba-card-body">
+        <div style="display:grid;grid-template-columns:auto 1fr;gap:20px;margin-bottom:16px">
+          <div style="text-align:center;padding:16px 24px;background:var(--surface2)">
+            <div style="font-family:'Barlow Condensed',sans-serif;font-size:44px;font-weight:900;color:${riskColor};line-height:1">${typeof score==='number'?score.toFixed(0):score}</div>
+            <div style="font-size:10px;letter-spacing:0.15em;text-transform:uppercase;color:var(--text2);margin-top:4px">${Object.keys(churn).length ? 'Risk Score' : 'Loyalty Score'}</div>
+            ${src.tier ? `<div style="margin-top:8px;font-family:'Barlow Condensed',sans-serif;font-size:12px;font-weight:700;color:var(--accent)">${src.tier} Tier</div>` : ''}
+            ${src.risk_level ? `<div style="margin-top:6px;font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;color:${riskColor}">${src.risk_level}</div>` : ''}
+          </div>
+          <div>
+            ${src.relationship_health_summary || src.root_cause_hypothesis || src.competitor_threat ? `<div style="font-size:12px;color:var(--text2);line-height:1.65;margin-bottom:10px">${src.relationship_health_summary||src.root_cause_hypothesis||src.competitor_threat||''}</div>` : ''}
+            ${(src.key_risk_factors||src.warning_signals||[]).map(f=>`<div style="font-size:12px;padding:4px 0;border-bottom:1px solid var(--border);color:var(--text2)">⚠ ${f}</div>`).join('')}
+          </div>
+        </div>
+        ${(src.loyalty_actions||src.rescue_actions||src.retention_actions||[]).length ?
+          `<div class="action-list">${renderActions((src.loyalty_actions||src.rescue_actions||src.retention_actions).map(a=>({...a,priority:a.priority||'HIGH'})))}</div>` : ''}
+        ${src.win_back_offer ? `<div style="margin-top:12px;background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.25);padding:12px 16px"><div style="font-family:'Barlow Condensed',sans-serif;font-size:11px;font-weight:700;letter-spacing:0.12em;text-transform:uppercase;color:var(--accent);margin-bottom:6px">Win-Back Offer</div><div style="font-size:13px;line-height:1.55">${src.win_back_offer}</div></div>` : ''}
+        ${(src.vip_benefits_to_offer||[]).length ? `<div style="margin-top:12px"><div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">VIP Benefits to Offer</div><div class="action-products">${src.vip_benefits_to_offer.map(b=>`<span class="product-tag">${b}</span>`).join('')}</div></div>` : ''}
+      </div>
+    </div>`;
+  }
+
+  // Tender intelligence
+  if (data.tender_intelligence) {
+    const ti = data.tender_intelligence;
+    html += `<div class="nba-card" style="margin-bottom:20px">
+      <div class="nba-card-header"><span class="nba-card-icon">📋</span><div class="nba-card-title">Tender Intelligence</div></div>
+      <div class="nba-card-body">`;
+    (ti.known_upcoming_tenders||[]).forEach(t => {
+      html += `<div class="news-item" style="margin-bottom:10px">
+        <div class="news-source">${t.tender_name||''} · ${t.typical_timing||''}</div>
+        <div class="news-headline">Est. ${fmtVal(t.estimated_value_qar)||'—'}</div>
+        <div class="news-impact">${t.Mannai_advantage||t.bid_strategy||''}</div>
+        ${(t.equipment_categories||[]).length ? '<div class="action-products" style="margin-top:6px">'+t.equipment_categories.map(p=>`<span class="product-tag">${p}</span>`).join('')+'</div>' : ''}
+      </div>`;
+    });
+    if (ti.relationship_levers) {
+      html += `<div style="margin-top:14px"><div style="font-family:'Barlow Condensed',sans-serif;font-size:10px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;color:var(--muted);margin-bottom:8px">Relationship Levers</div>`;
+      (ti.relationship_levers||[]).forEach(l => { html += `<div style="font-size:12px;padding:5px 0;border-bottom:1px solid var(--border);color:var(--text2)">→ ${l}</div>`; });
+      html += `</div>`;
+    }
+    html += `</div></div>`;
+  }
+
+  // Seasonal opportunities
+  if (data.gulf_intelligence?.seasonal_opportunities) {
+    html += `<div class="nba-card" style="margin-bottom:20px">
+      <div class="nba-card-header"><span class="nba-card-icon">📅</span><div class="nba-card-title">Seasonal Opportunities</div></div>
+      <div class="nba-card-body"><div class="news-list">`;
+    data.gulf_intelligence.seasonal_opportunities.forEach(s => {
+      html += `<div class="news-item">
+        <div class="news-source">${s.period||'Seasonal'}</div>
+        <div class="news-headline">${s.title||s.opportunity||''}</div>
+        <div class="news-impact">${s.description||s.action||''}</div>
+      </div>`;
+    });
+    html += `</div></div></div>`;
+  }
+
+  out.innerHTML = html || `<div class="nba-empty"><div class="nba-empty-icon">✅</div><div class="nba-empty-txt">Analysis complete</div></div>`;
+}
+
+async function runNBA() {
+  const company = document.getElementById('nbaCompany')?.value;
+  const useCase = document.getElementById('nbaUseCase')?.value || 'full';
+  const btn     = document.getElementById('nbaRunBtn');
+  const out     = document.getElementById('nbaOutput');
+
+  if (!company) { alert('Please select a company.'); return; }
+
+  const ctx = buildClientContext(company);
+  if (!ctx) { alert('No data found for this company.'); return; }
+
+  btn.disabled = true;
+  out.innerHTML = `<div class="nba-loading"><div class="nba-spinner"></div><div class="nba-loading-txt">Analysing ${company}…</div><div class="nba-loading-sub">GPT-4o is reviewing purchase history, Gulf market context, Qatar Vision 2030 projects, and generating actionable recommendations…</div></div>`;
+
+  try {
+    const { system, user } = buildPrompt(ctx, useCase);
+
+    const resp = await fetch('/api/openai-proxy', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'gpt-4o',
+        temperature: 0.7,
+        max_tokens: 2500,
+        response_format: { type: 'json_object' },
+        messages: [
+          { role: 'system', content: system },
+          { role: 'user',   content: user }
+        ]
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message || `HTTP ${resp.status}`);
+    }
+
+    const result = await resp.json();
+    const raw    = result.choices[0].message.content;
+    const parsed = JSON.parse(raw);
+    renderNBAOutput(parsed, useCase, company);
+
+  } catch(e) {
+    const notDeployed = e.message.includes('Failed to fetch') || e.message.includes('NetworkError') || e.message.includes('404');
+    out.innerHTML = notDeployed
+      ? `<div class="nba-empty"><div class="nba-empty-icon">🚀</div><div class="nba-empty-txt">Not deployed yet</div><div class="nba-empty-sub" style="color:var(--text2)">Push to GitHub and connect to Cloudflare Pages to enable AI features.</div></div>`
+      : `<div class="nba-empty"><div class="nba-empty-icon">❌</div><div class="nba-empty-txt">Error</div><div class="nba-empty-sub" style="color:var(--red)">${e.message}</div></div>`;
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// Wire up company dropdown after dashboard renders
+const _origUpdateAll = typeof updateAll === 'function' ? updateAll : null;
+function updateAll(){
+  updateKPIs(); updateCharts(); updateTable();
+  populateNBACompanies();
+  const rc=document.getElementById('recordCount');
+  if(rc) rc.innerHTML=`<strong>${filteredData.length.toLocaleString()}</strong> / ${allData.length.toLocaleString()} records`;
+}
+
+// Auto-load from Google Drive on page start
+document.addEventListener('DOMContentLoaded', () => {
+  loadFromDrive();
+});
+
+</script>
+</body>
+</html>
